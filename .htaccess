@@ -1,0 +1,41 @@
+# ============================================================
+# Sistema Universitario
+# .htaccess raiz (Apache / XAMPP)
+# ============================================================
+
+# No listar el contenido de directorios
+Options -Indexes
+
+# Pagina por defecto
+DirectoryIndex index.php
+
+# Bloquear descarga directa de archivos sensibles (logs, SQL, docs)
+<FilesMatch "\.(sql|log|md|bak|ini|env)$">
+  Require all denied
+</FilesMatch>
+
+# Denegar acceso directo a directorios internos
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Directorios internos protegidos
+  RewriteRule ^(app|database|storage|docs)(/|$) - [F,L]
+
+  # Archivos ocultos
+  RewriteRule ^\. - [F,L]
+
+  # --------------------------------------------------------------
+  # Las paginas publicas viven en public/ pero se acceden como si
+  # estuvieran en la raiz: /sistema-universitario/login.php sirve
+  # public/login.php (URL limpia, sin redireccion visible).
+  # --------------------------------------------------------------
+  RewriteCond %{REQUEST_URI} !^/sistema-universitario/public(/|$) [NC]
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Encabezados de seguridad basicos
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

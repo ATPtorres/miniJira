@@ -1,0 +1,4 @@
+# Bloqueo total: la carpeta app/ no debe ser accesible por URL
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>

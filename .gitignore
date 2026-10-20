@@ -1,0 +1,17 @@
+# Config local y credenciales de desarrollo (no versionar)
+/app/config/config.php
+/docs/CREDENCIALES_DEV.md
+
+# Archivos generados: logs y uploads de usuarios
+/storage/logs/*
+!/storage/logs/.gitkeep
+!/storage/logs/.htaccess
+/storage/uploads/*
+!/storage/uploads/.htaccess
+
+# Basura de sistema y editores
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
+*.tmp
