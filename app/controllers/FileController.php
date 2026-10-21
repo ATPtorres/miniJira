@@ -46,6 +46,7 @@ final class FileController
 
         $category = post('category') ?: 'resource';
         $description = trim(post('description'));
+        $replacesId = max(0, (int) post('replaces_file_id'));
         if (mb_strlen($description) > 500) {
             flash_set('error', 'La descripción no puede superar 500 caracteres.');
             redirect($returnTo);
@@ -107,6 +108,21 @@ final class FileController
                 $db->rollBack();
                 access_denied();
             }
+            $previous = null;
+            if ($replacesId > 0) {
+                $previous = ProjectFile::find($replacesId);
+                if ($previous === null || (int) $previous['project_id'] !== $projectId
+                    || (int) $previous['task_id'] !== $taskId || !self::canVersion($previous)) {
+                    $db->rollBack();
+                    access_denied();
+                }
+                if (count($validated) !== 1) {
+                    throw new InvalidArgumentException('Selecciona un solo archivo para crear una nueva versión.');
+                }
+                if (!ProjectFile::isLatest($previous)) {
+                    throw new InvalidArgumentException('El archivo tiene una versión más reciente. Recarga la página antes de volver a subir.');
+                }
+            }
             if (ProjectFile::totalSize($projectId) + $batchSize > ProjectFile::MAX_PROJECT_SIZE) {
                 throw new RuntimeException('Se excede el límite total de 50 MB por proyecto.');
             }
@@ -130,6 +146,8 @@ final class FileController
                     'file_size' => $file['size'],
                     'description' => $description,
                     'category' => $category,
+                    'version_root_id' => $previous === null ? null : ($previous['version_root_id'] ?? $previous['id']),
+                    'version_number' => $previous === null ? 1 : (int) $previous['version_number'] + 1,
                 ]);
             }
             $db->commit();
@@ -174,6 +192,16 @@ final class FileController
         redirect($returnTo);
     }
 
+    /** El estudiante solo versiona entregas propias; el gestor conserva su acceso. */
+    public static function canVersion(array $file): bool
+    {
+        if ($file['comment_id'] !== null || $file['deleted_at'] !== null
+            || !self::canUpload((int) $file['project_id'], $file['task_id'] === null ? null : (int) $file['task_id'])) return false;
+        if (can('files.upload') && Project::userCanManage((int) $file['project_id'], current_user_id(), can('projects.manage.all'))) return true;
+        $root = $file['version_root_id'] === null ? $file : ProjectFile::find((int) $file['version_root_id']);
+        return $root !== null && (int) $root['uploaded_by_id'] === current_user_id();
+    }
+
     public static function delete(int $projectId): void
     {
         if (!is_post()) {
@@ -185,21 +213,32 @@ final class FileController
             access_denied();
         }
 
-        $fileId = (int) post('file_id');
-        $file = ProjectFile::find($fileId);
-        if ($file === null || (int) $file['project_id'] !== $projectId) {
-            flash_set('error', 'El archivo no es válido.');
+        $db = db();
+        $db->beginTransaction();
+        try {
+            $lock = $db->prepare('SELECT id FROM projects WHERE id=? FOR UPDATE');
+            $lock->execute([$projectId]);
+            $file = ProjectFile::find((int) post('file_id'));
+            if (!Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'))
+                || $file === null || (int) $file['project_id'] !== $projectId || $file['comment_id'] !== null
+                || !ProjectFile::isLatest($file)) {
+                $db->rollBack();
+                access_denied();
+            }
+            $versions = ProjectFile::series($file);
+            foreach ($versions as $version) ProjectFile::delete((int) $version['id']);
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Error eliminando archivo: ' . $e->getMessage());
+            flash_set('error', 'No se pudo eliminar el archivo. Inténtalo de nuevo.');
             redirect('projects/files.php?id=' . $projectId);
         }
-
-        // Eliminar archivo físico
-        $path = ProjectFile::projectDir($projectId) . '/' . $file['stored_name'];
-        if (file_exists($path)) {
-            unlink($path);
+        foreach ($versions as $version) {
+            $path = ProjectFile::projectDir($projectId) . '/' . $version['stored_name'];
+            if (is_file($path) && !@unlink($path)) error_log('No se pudo limpiar archivo eliminado #' . $version['id']);
         }
-
-        ProjectFile::delete($fileId);
-        flash_set('success', 'Archivo eliminado correctamente.');
+        flash_set('success', 'Archivo y versiones eliminados. Su registro se conserva en el historial.');
         redirect('projects/files.php?id=' . $projectId);
     }
 }

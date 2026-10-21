@@ -58,13 +58,16 @@ final class ProjectFile
                 FROM project_files f
                 JOIN users u ON u.id = f.uploaded_by_id
                 LEFT JOIN project_tasks t ON t.id = f.task_id
-                WHERE f.project_id = ? AND f.deleted_at IS NULL AND f.comment_id IS NULL';
+                WHERE f.project_id = ? AND f.deleted_at IS NULL AND f.comment_id IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM project_files newer
+                    WHERE newer.version_root_id=COALESCE(f.version_root_id,f.id)
+                      AND newer.version_number>f.version_number AND newer.deleted_at IS NULL)';
         $params = [$projectId];
         if ($taskId !== null) {
             $sql .= ' AND f.task_id = ?';
             $params[] = $taskId;
         }
-        $sql .= ' ORDER BY f.created_at DESC';
+        $sql .= ' ORDER BY f.created_at DESC, f.id DESC';
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
@@ -84,9 +87,9 @@ final class ProjectFile
         return $stmt->fetchAll();
     }
 
-    public static function find(int $fileId): ?array
+    public static function find(int $fileId, bool $includeDeleted = false): ?array
     {
-        $stmt = db()->prepare('SELECT * FROM project_files WHERE id = ? AND deleted_at IS NULL');
+        $stmt = db()->prepare('SELECT * FROM project_files WHERE id = ?' . ($includeDeleted ? '' : ' AND deleted_at IS NULL'));
         $stmt->execute([$fileId]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
@@ -95,8 +98,8 @@ final class ProjectFile
     public static function create(array $data): int
     {
         $stmt = db()->prepare(
-            'INSERT INTO project_files (project_id, task_id, comment_id, uploaded_by_id, original_name, stored_name, mime_type, file_size, description, category)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO project_files (project_id, task_id, comment_id, uploaded_by_id, original_name, stored_name, mime_type, file_size, description, category, version_root_id, version_number)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['project_id'],
@@ -109,14 +112,54 @@ final class ProjectFile
             $data['file_size'],
             $data['description'] ?: null,
             $data['category'] ?? 'resource',
+            $data['version_root_id'] ?? null,
+            $data['version_number'] ?? 1,
         ]);
         return (int) db()->lastInsertId();
     }
 
     public static function delete(int $fileId): void
     {
-        $stmt = db()->prepare('UPDATE project_files SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
-        $stmt->execute([$fileId]);
+        $stmt = db()->prepare('UPDATE project_files SET deleted_at = NOW(), deleted_by_id = ? WHERE id = ? AND deleted_at IS NULL');
+        $stmt->execute([current_user_id(), $fileId]);
+    }
+
+    public static function isLatest(array $file): bool
+    {
+        $stmt = db()->prepare('SELECT COUNT(*) FROM project_files WHERE version_root_id=? AND version_number>?');
+        $stmt->execute([$file['version_root_id'] ?? $file['id'], $file['version_number']]);
+        return (int) $stmt->fetchColumn() === 0;
+    }
+
+    public static function series(array $file): array
+    {
+        $rootId = $file['version_root_id'] ?? $file['id'];
+        $stmt = db()->prepare('SELECT * FROM project_files WHERE id=? OR version_root_id=? ORDER BY version_number');
+        $stmt->execute([$rootId, $rootId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Historial de entregables y recursos; los adjuntos de comentarios se consultan en su hilo. */
+    public static function history(int $projectId, ?int $taskId, ?int $rootId, int $page = 1): array
+    {
+        $where = 'f.project_id=? AND f.comment_id IS NULL';
+        $params = [$projectId];
+        if ($taskId !== null) { $where .= ' AND f.task_id=?'; $params[] = $taskId; }
+        if ($rootId !== null) { $where .= ' AND (f.id=? OR f.version_root_id=?)'; $params[] = $rootId; $params[] = $rootId; }
+        $count = db()->prepare('SELECT COUNT(*) FROM project_files f WHERE ' . $where);
+        $count->execute($params);
+        $total = (int) $count->fetchColumn();
+        $pages = max(1, (int) ceil($total / 50));
+        $page = max(1, min($page, $pages));
+        $stmt = db()->prepare('SELECT f.*, CONCAT(u.first_name," ",u.last_name) AS uploader_name,
+            CONCAT(d.first_name," ",d.last_name) AS deleted_by_name, t.title AS task_title,
+            NOT EXISTS (SELECT 1 FROM project_files newer WHERE newer.version_root_id=COALESCE(f.version_root_id,f.id)
+                AND newer.version_number>f.version_number) AS is_latest
+            FROM project_files f JOIN users u ON u.id=f.uploaded_by_id
+            LEFT JOIN users d ON d.id=f.deleted_by_id LEFT JOIN project_tasks t ON t.id=f.task_id
+            WHERE ' . $where . ' ORDER BY f.created_at DESC, f.id DESC LIMIT 50 OFFSET ' . (($page-1)*50));
+        $stmt->execute($params);
+        return ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'pages' => $pages];
     }
 
     /** Bytes totales usados por un proyecto. */

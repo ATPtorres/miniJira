@@ -10,6 +10,7 @@ $sql=file_get_contents(__DIR__.'/../database/install.sql');
 $sql=preg_replace('/CREATE DATABASE IF NOT EXISTS sistema_universitario.*?;/s','',$sql);
 $sql=str_replace('USE sistema_universitario;','',$sql);
 db()->exec($sql);
+require __DIR__ . '/../database/migrations/20261021_file_history.php';
 db()->exec('DELETE FROM projects');
 db()->exec('DELETE FROM users');
 $pass=0;$fail=0;

@@ -102,6 +102,7 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
   <div class="task-detail-col">
     <section class="card">
       <h2>Archivos adjuntos (<?= count($files) ?>)</h2>
+      <p><a href="<?= e(base_url('projects/file-history.php?id=' . $projectId . '&task_id=' . $taskId)) ?>">Historial de entregas de esta tarea</a></p>
 
       <?php if ($canUpload): ?>
       <p class="text-muted">Sube tu entregable. Se registrarán automáticamente el autor, la fecha y la hora. Máximo 10 MB por archivo y 50 MB por proyecto.</p>
@@ -109,6 +110,7 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="upload-file">
         <input type="hidden" name="task_id" value="<?= (int) $taskId ?>">
+        <?php $versionFiles = $files; $versionInputId = 'task-file-version'; require APP_PATH . '/app/views/partials/file-version-select.php'; ?>
         <div class="form-group">
           <label for="file-input">Seleccionar archivo(s)</label>
           <input type="file" id="file-input" name="files[]" multiple required class="file-input">
@@ -149,12 +151,14 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
                   <span><?= ProjectFile::formatSize((int) $file['file_size']) ?></span>
                   <span><?= e($file['uploader_name']) ?></span>
                   <span><?= e(date('d/m/Y H:i', strtotime($file['created_at']))) ?></span>
+                  <span>Versión <?= (int) $file['version_number'] ?></span>
                 </div>
                 <?php if ($file['description']): ?>
                   <div class="file-description"><?= e($file['description']) ?></div>
                 <?php endif; ?>
               </div>
               <div class="file-actions">
+                <a class="btn btn-sm btn-outline-dark" href="<?= e(base_url('projects/file-history.php?id=' . $projectId . '&task_id=' . $taskId . '&file_id=' . $file['id'])) ?>">Historial</a>
                 <a class="btn btn-sm btn-outline-dark" href="<?= e(base_url('projects/download.php?file_id=' . $file['id'])) ?>" title="Descargar">
                   <i class="fas fa-download"></i>
                 </a>
@@ -163,7 +167,7 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="delete-file">
                     <input type="hidden" name="file_id" value="<?= (int) $file['id'] ?>">
-                    <button class="btn btn-sm btn-outline-dark" type="submit" onclick="return confirm('¿Eliminar este archivo?')">
+                    <button class="btn btn-sm btn-outline-dark" type="submit" onclick="return confirm('¿Eliminar este archivo y todas sus versiones? El registro quedará en el historial.')">
                       <i class="fas fa-trash"></i>
                     </button>
                   </form>

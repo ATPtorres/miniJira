@@ -15,10 +15,11 @@ composer install --no-interaction --prefer-dist
 php database/migrate_beta.php
 ```
 
-La migracion es repetible. Crea dos tablas y toma una observacion inicial solo
+La migracion es repetible. Crea dos tablas, añade los campos de versiones y
+autor de eliminación de ULAT-21, y toma una observacion inicial solo
 para proyectos que no tienen historial. Conserva observaciones previas, usuarios,
 claves y datos. Aplicarla antes de poner la version Beta en servicio.
-Para una base vacia, `database/install.sql` ya incluye ambas tablas.
+Para una base vacia, `database/install.sql` ya incluye estas tablas y campos.
 No volver a importar `install.sql` sobre una base en uso: reinicia permisos.
 Las migraciones academicas siguen siendo independientes de esta actualizacion.
 
@@ -76,6 +77,37 @@ elimina también sus respuestas y revoca todos sus adjuntos, libera el cupo y
 limpia los archivos físicos. Los comentarios anteriores se conservan como raíces.
 No hace falta una migración adicional en la rama Beta: ya dispone de `parent_id`
 y `comment_id`.
+
+## Historial de archivos y entregas (ULAT-21)
+
+Desde **Archivos** o el detalle de una tarea se accede al historial por proyecto,
+tarea o archivo. Muestra cada versión con autor, descripción, fecha/hora, tamaño,
+estado actual/anterior/eliminado y descarga de versiones conservadas. El listado
+está paginado de 50 en 50 y permite filtrar por tarea. Los adjuntos de comentarios
+siguen en sus conversaciones; el historial no expone sus archivos privados.
+
+En **Tipo de subida**, elegir **Archivo nuevo e independiente** o **Nueva versión
+de…**. Una revisión admite un solo archivo, puede tener otro nombre y mantiene
+su proyecto y tarea. Los nombres iguales por sí solos no agrupan entregas.
+El estudiante solo versiona sus propias entregas en tareas asignadas y abiertas;
+los gestores con permiso de subida pueden actualizar los archivos del proyecto.
+La lista habitual muestra la última versión; las anteriores se descargan desde
+el historial y todas cuentan para el cupo de 50 MB.
+
+El servidor asigna los números y serializa revisiones concurrentes: si otra
+persona ya actualizó el archivo, pide recargar en lugar de crear una rama o
+sobrescribir contenido. Un error de guardado conserva las versiones anteriores.
+
+Eliminar un archivo revoca **todas sus versiones**, libera su espacio y elimina
+los archivos físicos; sus nombres, autores, fechas, versiones y autor/fecha de
+eliminación permanecen en el historial. No se permite recuperar una descarga
+eliminada cambiando el ID o enviando una nueva versión del archivo eliminado.
+La eliminación fallida revierte todos los registros antes de tocar los archivos.
+
+Aplicar `php database/migrate_beta.php` antes de usar esta actualización.
+La migración es aditiva y repetible. Los archivos existentes comienzan como
+versión 1 independiente; se conservan sus metadatos, pero no se reconstruyen
+relaciones ni contenidos históricos que el sistema anterior no guardó.
 
 ## Recordatorios en segundo plano
 
@@ -205,5 +237,9 @@ lotes múltiples y reversión de archivos y registros ante un fallo de base de d
 Las pruebas de ULAT-23/24 verifican hilos de proyecto/tarea, privacidad heredada,
 anonimato, destinatarios de avisos, adjuntos de texto/imagen/audio, aislamiento,
 límites y reversión completa, eliminación de hilos y descarga desde Chromium.
+Las pruebas de ULAT-21 cubren versiones y descargas anteriores, permisos,
+concurrencia real de dos subidas, atomicidad de revisión y eliminación, historial
+de eliminados, paginación, privacidad de comentarios, migración repetida y el
+flujo de actualización/descarga de versiones en Chromium.
 Usa Chromium del sistema o `CHROMIUM_BIN`; alternativamente instalar el navegador
 administrado por Playwright. No requiere credenciales externas.

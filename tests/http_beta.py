@@ -2,6 +2,7 @@
 import os, json, time, re, subprocess, signal, tempfile, pathlib, shutil, urllib.request as ur, urllib.parse as up, urllib.error as ue, http.cookiejar, contextlib
 from uploads import run_upload_checks
 from comments import run_comment_checks
+from file_history import run_file_history_checks
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PHP=os.environ.get('PHP_BIN','php')
 ENV=os.environ.copy()
@@ -61,6 +62,7 @@ try:
     project=FX['project']; task=FX['task']
     run_upload_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
     run_comment_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
+    run_file_history_checks(BASE, FX, student, teacher, observer, outsider, php, require, ROOT)
     for path in [f'api/project-metrics.php?id={project}',f'projects/analytics.php?id={project}',f'projects/report.php?id={project}']:
         require(outsider.req(path)[0]==403,'outsider denied '+path.split('?')[0])
     require(student.req('api/project-metrics.php?id='+str(project)+'&from=2026-02-31')[0]==400,'invalid date filter rejected')

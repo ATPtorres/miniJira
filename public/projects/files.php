@@ -34,6 +34,7 @@ $pageTitle = 'Archivos · ' . $project['title'];
     <a class="btn btn-outline-dark" href="<?= e(base_url('projects/index.php')) ?>">Mis proyectos</a>
     <a class="btn btn-outline-dark" href="<?= e(base_url('projects/board.php?id=' . $projectId)) ?>">Tablero</a>
     <a class="btn btn-outline-dark" href="<?= e(base_url('projects/dashboard.php?id=' . $projectId)) ?>">Panel</a>
+    <a class="btn btn-outline-dark" href="<?= e(base_url('projects/file-history.php?id=' . $projectId)) ?>">Historial de archivos y entregas</a>
     <?php if ($canManage): ?>
       <a class="btn btn-primary" href="<?= e(base_url('projects/form.php?id=' . $projectId)) ?>">Editar proyecto</a>
     <?php endif; ?>
@@ -47,6 +48,7 @@ $pageTitle = 'Archivos · ' . $project['title'];
   <form method="post" action="<?= e(base_url('projects/files.php?id=' . $projectId)) ?>" enctype="multipart/form-data">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="upload-file">
+    <?php $versionFiles = $files; $versionInputId = 'project-file-version'; require APP_PATH . '/app/views/partials/file-version-select.php'; ?>
     <div class="form-row">
       <div class="form-group" style="flex:2">
         <label for="file-input">Seleccionar archivo(s)</label>
@@ -99,6 +101,7 @@ $pageTitle = 'Archivos · ' . $project['title'];
               <span><?= ProjectFile::formatSize((int) $file['file_size']) ?></span>
               <span><?= e($file['uploader_name']) ?></span>
               <span><?= e(date('d/m/Y H:i', strtotime($file['created_at']))) ?></span>
+              <span>Versión <?= (int) $file['version_number'] ?></span>
               <?php if ($file['task_title']): ?>
                 <span class="file-task-link">Tarea: <?= e($file['task_title']) ?></span>
               <?php endif; ?>
@@ -108,6 +111,7 @@ $pageTitle = 'Archivos · ' . $project['title'];
             <?php endif; ?>
           </div>
           <div class="file-actions">
+            <a class="btn btn-sm btn-outline-dark" href="<?= e(base_url('projects/file-history.php?id=' . $projectId . '&file_id=' . $file['id'])) ?>">Historial</a>
             <a class="btn btn-sm btn-outline-dark" href="<?= e(base_url('projects/download.php?file_id=' . $file['id'])) ?>" title="Descargar">
               <i class="fas fa-download"></i> Descargar
             </a>
@@ -116,7 +120,7 @@ $pageTitle = 'Archivos · ' . $project['title'];
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="delete-file">
                 <input type="hidden" name="file_id" value="<?= (int) $file['id'] ?>">
-                <button class="btn btn-sm btn-outline-dark" type="submit" onclick="return confirm('¿Eliminar este archivo?')">
+                <button class="btn btn-sm btn-outline-dark" type="submit" onclick="return confirm('¿Eliminar este archivo y todas sus versiones? El registro quedará en el historial.')">
                   <i class="fas fa-trash"></i>
                 </button>
               </form>

@@ -210,6 +210,9 @@ CREATE TABLE IF NOT EXISTS project_files (
   project_id INT UNSIGNED NOT NULL,
   task_id INT UNSIGNED NULL,
   comment_id INT UNSIGNED NULL,
+  version_root_id INT UNSIGNED NULL,
+  version_number INT UNSIGNED NOT NULL DEFAULT 1,
+  deleted_by_id INT UNSIGNED NULL,
   uploaded_by_id INT UNSIGNED NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   stored_name VARCHAR(255) NOT NULL,
@@ -224,6 +227,11 @@ CREATE TABLE IF NOT EXISTS project_files (
   KEY idx_pf_task (task_id),
   KEY idx_pf_comment (comment_id),
   KEY idx_pf_uploader (uploaded_by_id),
+  UNIQUE KEY uq_pf_version (version_root_id, version_number),
+  CONSTRAINT fk_pf_version_root FOREIGN KEY (version_root_id)
+    REFERENCES project_files (id) ON DELETE CASCADE,
+  CONSTRAINT fk_pf_deleted_by FOREIGN KEY (deleted_by_id)
+    REFERENCES users (id) ON DELETE SET NULL,
   CONSTRAINT fk_pf_project FOREIGN KEY (project_id)
     REFERENCES projects (id) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT fk_pf_task FOREIGN KEY (task_id)
