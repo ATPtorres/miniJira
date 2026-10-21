@@ -3,8 +3,7 @@
  * Sistema Universitario
  * public/admin/dashboard.php — Panel del Administrador.
  *
- * NOTA DE DISENO (MOCKUP): reportes, graficos y auditoria son datos
- * DEMOSTRACION. Los totales por rol si se obtienen de la BD.
+ * Indicadores reales de usuarios y proyectos visibles para el administrador.
  */
 
 declare(strict_types=1);
@@ -24,17 +23,8 @@ $saludo = $hour < 12 ? 'Buenos dias' : ($hour < 19 ? 'Buenas tardes' : 'Buenas n
 
 $maxCount = (int) max(1, ...array_map(static fn (array $r): int => (int) $r['total'], $counts));
 
-// Sparkline SVG para reportes
-$spark = [40, 55, 48, 70, 62, 80, 74, 90, 82, 95, 88, 100];
-$n = count($spark); $w = 300; $h = 110; $pad = 10;
-$pts = [];
-foreach ($spark as $i => $v) {
-    $x = $pad + ($w - 2*$pad) * ($i / ($n - 1));
-    $y = $h - $pad - ($h - 2*$pad) * ($v / 100);
-    $pts[] = round($x,1).','.round($y,1);
-}
-$poly = implode(' ', $pts);
-$area = $pad.','.($h-$pad).' '.$poly.' '.round($w-$pad,1).','.($h-$pad);
+$projects = Project::accessibleTo(current_user_id(), can('projects.manage.all'));
+$projectSummary = ProjectMetrics::fromCounts(Project::summaryFor(current_user_id(), can('projects.manage.all')));
 
 // Iconos SVG
 $ico = fn (string $path) => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';
@@ -71,12 +61,12 @@ $pageTitle = 'Panel de Administracion';
 <section class="cards">
   <article class="card stat-card">
     <span class="stat-icon" aria-hidden="true"><?= $icoUsers ?></span>
-    <div><div class="stat-value"><?= e((string) $total) ?></div><p class="stat-label">Usuarios en el sistema</p><span class="stat-trend up">&#9650; 4 este mes</span></div>
+    <div><div class="stat-value"><?= e((string) $total) ?></div><p class="stat-label">Usuarios en el sistema</p></div>
   </article>
   <?php foreach ($counts as $row): ?>
   <article class="card stat-card">
     <span class="stat-icon" aria-hidden="true"><?= $row['code'] === 'docente' ? $icoTeach : ($row['code'] === 'estudiante' ? $icoStud : $icoShield) ?></span>
-    <div><div class="stat-value"><?= e((string) $row['total']) ?></div><p class="stat-label"><?= e($row['name']) ?></p><span class="stat-trend flat">&#8212; estable</span></div>
+    <div><div class="stat-value"><?= e((string) $row['total']) ?></div><p class="stat-label"><?= e($row['name']) ?></p></div>
   </article>
   <?php endforeach; ?>
 </section>
@@ -126,28 +116,19 @@ $pageTitle = 'Panel de Administracion';
   <aside class="dash-col">
     <h2 class="section-title">Reportes y desempeno</h2>
     <section class="card">
-      <p style="font-weight:700;color:var(--navy);margin:0 0 10px;font-size:.9rem">Avance general de proyectos</p>
-      <svg viewBox="0 0 <?= $w ?> <?= $h ?>" width="100%" height="120" preserveAspectRatio="none" aria-hidden="true" style="display:block;border-radius:8px;background:var(--gray-100)">
-        <polygon points="<?= $area ?>" fill="rgba(13,27,62,.12)"></polygon>
-        <polyline points="<?= $poly ?>" fill="none" stroke="#0d1b3e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
-      </svg>
-      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--gray-400);margin-top:6px"><span>Ene</span><span>Jun</span><span>Dic</span></div>
-      <ul class="quick-links" style="margin-top:14px">
-        <li><a href="#"><span class="ql-icon" aria-hidden="true"><?= $icoClip ?></span> Reporte de avance general</a></li>
-        <li><a href="#"><span class="ql-icon" aria-hidden="true"><?= $icoChart ?></span> Desempeno individual</a></li>
-        <li><a href="#"><span class="ql-icon" aria-hidden="true"><?= $icoDoc ?></span> Exportar a PDF</a></li>
-      </ul>
+      <h3>Distribucion real de tareas</h3>
+      <div data-live-summary><?= ProjectCharts::states($projectSummary) ?></div>
+      <p><a class="btn btn-primary" href="<?= e(base_url('projects/analytics.php')) ?>">Analitica e informes PDF</a></p>
     </section>
-
-    <h2 class="section-title">Auditoria del sistema</h2>
-    <section class="card">
-      <ul class="audit">
-        <li><span class="audit-tag">Crear</span><div><span class="audit-text">Creo el usuario "maria.lopez@universidad.edu".</span><span class="audit-time">Hace 35 min</span></div></li>
-        <li><span class="audit-tag">Editar</span><div><span class="audit-text">Cambio el rol de "juan.perez" a Docente.</span><span class="audit-time">Hoy, 09:12</span></div></li>
-        <li><span class="audit-tag">Eliminar</span><div><span class="audit-text">Elimino logicamente el proyecto "Inventario Lab".</span><span class="audit-time">Ayer, 17:40</span></div></li>
-        <li><span class="audit-tag">Reporte</span><div><span class="audit-text">Descargo el reporte de avance mensual.</span><span class="audit-time">Ayer, 14:05</span></div></li>
-        <li><span class="audit-tag">Sesion</span><div><span class="audit-text">Inicio sesion desde una nueva direccion IP.</span><span class="audit-time">Ayer, 08:30</span></div></li>
-      </ul>
+    <section class="card"><h3>Avance por proyecto</h3>
+      <?php if (!$projects): ?><p>No hay proyectos disponibles.</p><?php endif; ?>
+      <?php foreach ($projects as $p): $m = ProjectMetrics::fromCounts($p); ?>
+      <div class="progress-row" data-project-progress="<?= (int)$p['id'] ?>">
+        <a href="<?= e(base_url('projects/analytics.php?id='.$p['id'])) ?>"><?= e($p['title']) ?></a>
+        <span><span data-live-value="progress"><?= $m['progress'] ?></span>%</span>
+        <div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $m['progress'] ?>%"></div></div>
+      </div>
+      <?php endforeach; ?>
     </section>
 
     <h2 class="section-title">Acciones</h2>

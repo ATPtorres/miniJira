@@ -189,7 +189,11 @@ final class ProjectController
         }
 
         $oldStatus = $task['status'];
-        Task::updateStatus((int) $task['id'], $status);
+        $changed = Task::updateStatus((int) $task['id'], $status);
+        if (!$changed) {
+            if ($ajax) self::jsonOut(['ok'=>true,'task_id'=>(int)$task['id'],'status'=>$status,'old'=>$oldStatus]);
+            redirect('projects/board.php?id=' . $projectId);
+        }
 
         $statusLabels = ['todo' => 'Pendiente', 'doing' => 'En Proceso', 'review' => 'En Revision', 'done' => 'Terminado'];
         $project = Project::find($projectId);
@@ -361,21 +365,7 @@ final class ProjectController
             'created_by_id' => current_user_id(),
         ]);
 
-        $students = Project::students($projectId);
-        $me = current_user();
-        $teacherName = $me['first_name'] . ' ' . $me['last_name'];
-        $eventDateFormatted = date('d/m/Y', strtotime($eventDate));
-        $eventTimeText = $eventTime !== '' ? ' a las ' . date('H:i', strtotime($eventTime)) : '';
-
-        foreach ($students as $student) {
-            Notification::create(
-                (int) $student['id'],
-                'event_created',
-                'Nuevo evento en proyecto',
-                'El docente ' . $teacherName . ' creo el evento "' . $title . '" el dia ' . $eventDateFormatted . $eventTimeText . ' en el proyecto "' . $project['title'] . '"',
-                'projects/calendar.php?id=' . $projectId
-            );
-        }
+        self::notifyEvent($projectId, 'event_created', 'Nuevo evento', $title, $eventDate);
 
         flash_set('success', 'Evento creado correctamente.');
         redirect('projects/calendar.php?id=' . $projectId);
@@ -441,6 +431,7 @@ final class ProjectController
             'event_time' => $eventTime,
             'event_type' => $eventType,
         ]);
+        self::notifyEvent($projectId, 'event_updated', 'Evento actualizado', $title, $eventDate);
         flash_set('success', 'Evento actualizado correctamente.');
         redirect('projects/calendar.php?id=' . $projectId);
     }
@@ -463,8 +454,20 @@ final class ProjectController
         }
 
         ProjectEvent::delete($eventId);
+        self::notifyEvent($projectId, 'event_deleted', 'Evento cancelado', $existing['title'], $existing['event_date']);
         flash_set('success', 'Evento eliminado correctamente.');
         redirect('projects/calendar.php?id=' . $projectId);
+    }
+
+    private static function notifyEvent(int $projectId, string $type, string $label, string $title, string $date): void
+    {
+        $project = Project::find($projectId);
+        $ids = array_column(Project::students($projectId), 'id');
+        $ids[] = $project['responsible_teacher_id'];
+        foreach (array_unique(array_map('intval', $ids)) as $uid) {
+            if ($uid === current_user_id()) continue;
+            Notification::create($uid, $type, $label, $label . ': "' . $title . '" (' . $date . ').', 'projects/calendar.php?id=' . $projectId);
+        }
     }
 
     /** @return array{0:array,1:int[],2:array} */

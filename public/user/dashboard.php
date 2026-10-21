@@ -38,7 +38,7 @@ $icoClock   = $ico('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
 
 $totalTasks = $summary['todo'] + $summary['doing'] + $summary['review'] + $summary['done'];
 $pendingTasks = $summary['todo'] + $summary['doing'];
-$progressPct = $totalTasks > 0 ? (int) round(($summary['done'] / $totalTasks) * 100) : 0;
+$progressPct = ProjectMetrics::fromCounts($summary)['progress'];
 
 $pageTitle = 'Panel de ' . e($roleLabel);
 ?>
@@ -91,21 +91,22 @@ $pageTitle = 'Panel de ' . e($roleLabel);
         <?php foreach ($projects as $project):
           $pTotal = (int) $project['todo_count'] + (int) $project['doing_count'] + (int) $project['review_count'] + (int) $project['done_count'];
           $pDone = (int) $project['done_count'];
-          $pPct = $pTotal > 0 ? (int) round(($pDone / $pTotal) * 100) : 0;
-          $daysLeft = (int) $now->diff(new DateTime($project['end_date']))->format('%a');
-          $isOverdue = $now > new DateTime($project['end_date']) && $pPct < 100;
+          $pPct = ProjectMetrics::fromCounts($project)['progress'];
+          $time = ProjectMetrics::timeline($project);
+          $daysLeft = $time['expired'] ? $time['days_overdue'] : $time['days_remaining'];
+          $isOverdue = $time['expired'] && !ProjectMetrics::fromCounts($project)['completed'];
         ?>
-        <article class="card project-card">
+        <article class="card project-card" data-project-progress="<?= (int)$project['id'] ?>">
           <div class="project-head">
             <h3><?= e($project['title']) ?></h3>
             <?php if ($isOverdue): ?>
-              <span class="status" style="background:var(--error-bg);color:var(--error)">Vencido</span>
-            <?php elseif ($pPct >= 100): ?>
-              <span class="status status-done">Completado</span>
+              <span class="status" data-live-status style="background:var(--error-bg);color:var(--error)">Vencido</span>
+            <?php elseif ($pTotal > 0 && $pDone === $pTotal): ?>
+              <span class="status status-done" data-live-status>Completado</span>
             <?php elseif ($pDone > 0): ?>
-              <span class="status status-progress">En progreso</span>
+              <span class="status status-progress" data-live-status>En progreso</span>
             <?php else: ?>
-              <span class="status status-pending">Pendiente</span>
+              <span class="status status-pending" data-live-status>Pendiente</span>
             <?php endif; ?>
           </div>
           <p class="project-meta">
@@ -120,8 +121,8 @@ $pageTitle = 'Panel de ' . e($roleLabel);
           </div>
           <div class="progress-row" style="margin-bottom:0">
             <span class="progress-label">Avance</span>
-            <span class="progress-pct"><?= $pPct ?>%</span>
-            <div class="progress" style="grid-column:1/-1"><div class="progress-bar" style="width:<?= $pPct ?>%"></div></div>
+            <span class="progress-pct"><span data-live-value="progress"><?= $pPct ?></span>%</span>
+            <div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $pPct ?>%"></div></div>
           </div>
           <div class="form-actions" style="margin-top:12px">
             <a class="btn btn-primary btn-sm" href="<?= e(base_url('projects/board.php?id=' . $project['id'])) ?>">Tablero</a>
@@ -161,12 +162,12 @@ $pageTitle = 'Panel de ' . e($roleLabel);
       <?php foreach ($projects as $project):
         $pTotal = (int) $project['todo_count'] + (int) $project['doing_count'] + (int) $project['review_count'] + (int) $project['done_count'];
         $pDone = (int) $project['done_count'];
-        $pPct = $pTotal > 0 ? (int) round(($pDone / $pTotal) * 100) : 0;
+        $pPct = ProjectMetrics::fromCounts($project)['progress'];
       ?>
-      <div class="progress-row">
+      <div class="progress-row" data-project-progress="<?= (int)$project['id'] ?>">
         <span class="progress-label"><?= e($project['title']) ?></span>
-        <span class="progress-pct"><?= $pPct ?>%</span>
-        <div class="progress" style="grid-column:1/-1"><div class="progress-bar" style="width:<?= $pPct ?>%"></div></div>
+        <span class="progress-pct"><span data-live-value="progress"><?= $pPct ?></span>%</span>
+        <div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $pPct ?>%"></div></div>
       </div>
       <?php endforeach; ?>
     </section>

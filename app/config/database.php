@@ -20,6 +20,8 @@ function db(): PDO
 
     if ($pdo === null) {
         $c = config('db');
+        // Permite una BD de pruebas aislada sin modificar las credenciales locales.
+        $c['database'] = getenv('SISTEMA_DB_DATABASE') ?: $c['database'];
 
         $dsn = sprintf(
             'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -35,6 +37,8 @@ function db(): PDO
             PDO::ATTR_EMULATE_PREPARES   => false, // consultas preparadas reales (anti SQLi)
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
         ]);
+        // Fechas del historial y filtros usan la misma zona que la aplicacion.
+        $pdo->exec("SET time_zone = '" . date('P') . "'");
     }
 
     return $pdo;

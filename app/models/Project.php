@@ -56,6 +56,7 @@ final class Project
             ]);
             $id = (int) $pdo->lastInsertId();
             self::syncStudents($id, $studentIds, $pdo);
+            ProjectMetrics::record($id);
             $pdo->commit();
             return $id;
         } catch (Throwable $e) {

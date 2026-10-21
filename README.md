@@ -2,12 +2,18 @@
 
 Sistema de gestión universitario estilo JIRA, construido en **PHP 8.x + MySQL/MariaDB (XAMPP)** sin frameworks.
 
+La rama Beta agrega notificaciones con actualizacion automatica, Cron de recordatorios,
+analitica real e informes PDF. Ver [instalacion, ejecucion y pruebas de Beta](docs/BETA.md).
+
+Para Beta, ejecutar `composer install` y `php database/migrate_beta.php` antes de iniciar.
+
 ---
 
 ## 1. Requisitos
 
 - [XAMPP](https://www.apachefriends.org/) con PHP 8.x, Apache, MySQL/MariaDB y phpMyAdmin.
-- Extensiones PHP habilitadas: `pdo_mysql`, `openssl`, `session`.
+- Extensiones PHP habilitadas: `pdo_mysql`, `openssl`, `session`, `mbstring`, `fileinfo` y `dom`.
+- Composer 2 para instalar el generador de reportes PDF de Beta.
 
 ## 2. Instalación rápida
 

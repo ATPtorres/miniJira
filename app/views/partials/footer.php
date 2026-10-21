@@ -27,5 +27,6 @@ if (!defined('APP_PATH')) {
   <script src="<?= e(asset('js/calendar.js')) ?>" defer></script>
   <script src="<?= e(asset('js/notifications.js')) ?>" defer></script>
   <script src="<?= e(asset('js/kanban-dnd.js')) ?>" defer></script>
+  <script src="<?= e(asset('js/project-metrics.js')) ?>" defer></script>
 </body>
 </html>

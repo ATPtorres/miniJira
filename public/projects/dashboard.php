@@ -37,30 +37,18 @@ foreach ($comments as $c) {
     $commentFiles[(int) $c['id']] = ProjectFile::forComment((int) $c['id']);
 }
 
-$totalTasks = count($tasks);
-$todoCount = 0;
-$doingCount = 0;
-$reviewCount = 0;
-$doneCount = 0;
-foreach ($tasks as $task) {
-    match ($task['status']) {
-        'todo' => $todoCount++,
-        'doing' => $doingCount++,
-        'review' => $reviewCount++,
-        'done' => $doneCount++,
-    };
-}
-$progressPct = $totalTasks > 0 ? (int) round(($doneCount / $totalTasks) * 100) : 0;
-
-$now = new DateTime();
-$endDate = new DateTime($project['end_date']);
-$startDate = new DateTime($project['start_date']);
-$daysTotal = max(1, (int) $startDate->diff($endDate)->format('%a'));
-$daysElapsed = max(0, (int) $startDate->diff($now)->format('%a'));
-$daysRemaining = max(0, (int) $now->diff($endDate)->format('%a'));
-$timelinePct = min(100, (int) round(($daysElapsed / $daysTotal) * 100));
-$isOverdue = $now > $endDate && $progressPct < 100;
-$projectExpired = Task::isProjectExpired($projectId);
+$metrics = ProjectMetrics::forProject($projectId);
+$totalTasks = $metrics['total'];
+$todoCount = $metrics['todo'];
+$doingCount = $metrics['doing'];
+$reviewCount = $metrics['review'];
+$doneCount = $metrics['done'];
+$progressPct = $metrics['progress'];
+$timeline = ProjectMetrics::timeline($project);
+$timelinePct = $timeline['progress'];
+$daysRemaining = $timeline['days_remaining'];
+$isOverdue = $timeline['expired'] && !$metrics['completed'];
+$projectExpired = $timeline['expired'];
 
 $studentTasks = [];
 foreach ($tasks as $task) {
@@ -92,16 +80,17 @@ $pageTitle = 'Panel · ' . $project['title'];
 <div class="alert alert-warning">El proyecto ha vencido — la edicion y creacion de tareas esta bloqueada.</div>
 <?php endif; ?>
 
+<div data-project-progress="<?= $projectId ?>">
 <section class="countdown-bar" data-countdown="<?= e($project['end_date'] . 'T23:59:59') ?>">
   Tiempo restante: <strong class="countdown-value">calculando...</strong>
 </section>
 
 <section class="cards project-indicators">
-  <article class="card stat-card"><div><div class="stat-value"><?= $totalTasks ?></div><p class="stat-label">Tareas totales</p></div></article>
-  <article class="card stat-card"><div><div class="stat-value"><?= $todoCount ?></div><p class="stat-label">TO DO</p></div></article>
-  <article class="card stat-card"><div><div class="stat-value"><?= $doingCount ?></div><p class="stat-label">DOING</p></div></article>
-  <article class="card stat-card"><div><div class="stat-value"><?= $reviewCount ?></div><p class="stat-label">IN REVIEW</p></div></article>
-  <article class="card stat-card"><div><div class="stat-value"><?= $doneCount ?></div><p class="stat-label">DONE</p></div></article>
+  <article class="card stat-card"><div><div class="stat-value" data-live-value="total"><?= $totalTasks ?></div><p class="stat-label">Tareas totales</p></div></article>
+  <article class="card stat-card"><div><div class="stat-value" data-live-value="todo"><?= $todoCount ?></div><p class="stat-label">TO DO</p></div></article>
+  <article class="card stat-card"><div><div class="stat-value" data-live-value="doing"><?= $doingCount ?></div><p class="stat-label">DOING</p></div></article>
+  <article class="card stat-card"><div><div class="stat-value" data-live-value="review"><?= $reviewCount ?></div><p class="stat-label">IN REVIEW</p></div></article>
+  <article class="card stat-card"><div><div class="stat-value" data-live-value="done"><?= $doneCount ?></div><p class="stat-label">DONE</p></div></article>
 </section>
 
 <div class="dash-grid">
@@ -120,7 +109,7 @@ $pageTitle = 'Panel · ' . $project['title'];
 
     <h2 class="section-title">Avance general</h2>
     <section class="card">
-      <div class="progress-row"><span class="progress-label">Progreso de tareas</span><span class="progress-pct"><?= $progressPct ?>%</span><div class="progress" style="grid-column:1/-1"><div class="progress-bar" style="width:<?= $progressPct ?>%"></div></div></div>
+      <div class="progress-row"><span class="progress-label">Progreso de tareas</span><span class="progress-pct"><span data-live-value="progress"><?= $progressPct ?></span>%</span><div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $progressPct ?>%"></div></div></div>
       <div class="progress-row"><span class="progress-label">Avance temporal</span><span class="progress-pct"><?= $timelinePct ?>%</span><div class="progress" style="grid-column:1/-1"><div class="progress-bar" style="width:<?= $timelinePct ?>%;background:linear-gradient(90deg,var(--gold),var(--gold-dark))"></div></div></div>
       <?php if ($isOverdue): ?><p style="color:var(--error);font-weight:700;font-size:.88rem;margin-top:8px">El proyecto ha superado la fecha limite.</p><?php elseif ($daysRemaining > 0): ?><p style="color:var(--gray-600);font-size:.88rem;margin-top:8px">Faltan <?= $daysRemaining ?> dia(s) para la fecha limite.</p><?php else: ?><p style="color:var(--success);font-weight:700;font-size:.88rem;margin-top:8px">Fecha limite: hoy.</p><?php endif; ?>
     </section>
@@ -145,7 +134,7 @@ $pageTitle = 'Panel · ' . $project['title'];
             $sTasks = $studentTasks[(int) $student['id']] ?? [];
             $sTotal = array_sum($sTasks);
             $sDone = $sTasks['done'] ?? 0;
-            $sPct = $sTotal > 0 ? (int) round(($sDone / $sTotal) * 100) : 0;
+            $sPct = $sTotal > 0 ? ProjectMetrics::percentage($sDone, $sTotal) : 0;
           ?>
           <li class="task-item">
             <div class="task-main">
@@ -200,6 +189,12 @@ $pageTitle = 'Panel · ' . $project['title'];
     <?php endforeach; ?>
   </aside>
 </div>
+
+</div>
+<?php
+[$from, $to] = ProjectMetrics::dateRange(null, null);
+require APP_PATH . '/app/views/partials/project-charts.php';
+?>
 
 <h2 class="section-title" id="comentarios">Comentarios <span class="text-muted">(<?= count($comments) ?>)</span></h2>
 <section class="card comments-section">

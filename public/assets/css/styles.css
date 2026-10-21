@@ -2093,3 +2093,15 @@ tbody tr:hover { background: var(--gold-pale); }
   .comment-reply-form { flex-direction: column; }
   .comment-replies { margin-left: 8px; padding-left: 8px; }
 }
+
+/* Analitica Beta: graficos accesibles y filtros adaptables. */
+.chart-bars { display: grid; gap: 14px; margin: 20px 0; }
+.chart-row { display: grid; grid-template-columns: minmax(85px, 1fr) 3fr 35px; align-items: center; gap: 12px; }
+.chart-track { background: var(--gray-100); border-radius: 5px; height: 18px; overflow: hidden; }
+.chart-track > span { display: block; height: 100%; transition: width .25s; }
+.history-chart { width: 100%; height: auto; min-height: 120px; }
+.history-chart text { font-size: 11px; fill: #586574; }
+.analytics-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-bottom: 20px; }
+.analytics-filters label { display: grid; gap: 8px; }
+.live-analytics h3 { margin-top: 24px; }
+.live-analytics details table { width: 100%; }

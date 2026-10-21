@@ -14,6 +14,10 @@ final class Notification
         'project_student_added',
         'project_student_removed',
         'event_created',
+        'event_updated',
+        'event_deleted',
+        'event_deadline_reminder',
+        'project_deadline_reminder',
         'file_uploaded',
         'comment_added',
         'teaching_assignment',
@@ -35,7 +39,7 @@ final class Notification
     public static function forUser(int $userId, int $limit = 20): array
     {
         $stmt = db()->prepare(
-            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?'
+            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?'
         );
         $stmt->execute([$userId, $limit]);
         return $stmt->fetchAll();
@@ -103,7 +107,7 @@ final class Notification
         $params[] = $offset;
 
         $stmt = db()->prepare(
-            'SELECT * FROM notifications ' . $where . ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT * FROM notifications ' . $where . ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?'
         );
         $stmt->execute($params);
 
@@ -128,6 +132,10 @@ final class Notification
             'project_student_added'   => 'Asignacion a proyecto',
             'project_student_removed' => 'Remocion de proyecto',
             'event_created'           => 'Evento',
+            'event_updated'           => 'Evento actualizado',
+            'event_deleted'           => 'Evento cancelado',
+            'event_deadline_reminder' => 'Recordatorio de evento',
+            'project_deadline_reminder' => 'Recordatorio de proyecto',
             'file_uploaded'           => 'Archivo',
             'comment_added'           => 'Comentario',
             'teaching_assignment'     => 'Asignacion docente',
@@ -135,5 +143,22 @@ final class Notification
             'password_reset_request'  => 'Recuperacion',
             default                   => $type,
         };
+    }
+
+    /** Solo se invoca para el usuario autenticado, nunca para un ID del cliente. */
+    public static function feed(int $userId): array
+    {
+        $data = ['unread' => self::unreadCount($userId), 'items' => self::forUser($userId, 5)];
+        foreach ($data['items'] as &$item) $item['url'] = notification_url($item['link']);
+        unset($item);
+        // Include changes outside the five-item dropdown, including deletions/read state.
+        $stmt = db()->prepare('SELECT id,is_read FROM notifications WHERE user_id=? ORDER BY id');
+        $stmt->execute([$userId]);
+        $hash = hash_init('sha256');
+        foreach ($stmt as $row) hash_update($hash, $row['id'] . ':' . $row['is_read'] . ';');
+        $data['version'] = hash_final($hash);
+        $mode = (string) config('notifications.transport', 'auto');
+        $data['transport'] = $mode === 'poll' || ($mode === 'auto' && PHP_SAPI === 'cli-server') ? 'poll' : 'sse';
+        return $data;
     }
 }

@@ -1,0 +1,19 @@
+{
+    "name": "atptorres/minijira",
+    "description": "Sistema universitario PHP con notificaciones, analitica y reportes",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "ext-dom": "*",
+        "dompdf/dompdf": "^3.1"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": false
+    },
+    "license": "proprietary"
+}

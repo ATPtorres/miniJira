@@ -47,22 +47,23 @@ $pageTitle = 'Proyectos';
   <?php foreach ($projects as $project):
     $totalTasks = (int) $project['todo_count'] + (int) $project['doing_count'] + (int) $project['review_count'] + (int) $project['done_count'];
     $doneTasks = (int) $project['done_count'];
-    $progressPct = $totalTasks > 0 ? (int) round(($doneTasks / $totalTasks) * 100) : 0;
-    $daysLeft = (int) (new DateTime())->diff(new DateTime($project['end_date']))->format('%a');
-    $isOverdue = (new DateTime()) > new DateTime($project['end_date']) && $progressPct < 100;
+    $progressPct = ProjectMetrics::fromCounts($project)['progress'];
+    $time = ProjectMetrics::timeline($project);
+    $daysLeft = $time['expired'] ? $time['days_overdue'] : $time['days_remaining'];
+    $isOverdue = $time['expired'] && !ProjectMetrics::fromCounts($project)['completed'];
     $isMine = (int) $project['responsible_teacher_id'] === (int) $me['id'];
   ?>
-    <article class="card project-card">
+    <article class="card project-card" data-project-progress="<?= (int)$project['id'] ?>">
       <div class="project-head">
         <h2><?= e($project['title']) ?></h2>
         <?php if ($isOverdue): ?>
-          <span class="status" style="background:var(--error-bg);color:var(--error)">Vencido</span>
-        <?php elseif ($progressPct >= 100): ?>
-          <span class="status status-done">Completado</span>
+          <span class="status" data-live-status style="background:var(--error-bg);color:var(--error)">Vencido</span>
+        <?php elseif ($totalTasks > 0 && $doneTasks === $totalTasks): ?>
+          <span class="status status-done" data-live-status>Completado</span>
         <?php elseif ($doneTasks > 0): ?>
-          <span class="status status-progress">En progreso</span>
+          <span class="status status-progress" data-live-status>En progreso</span>
         <?php else: ?>
-          <span class="status status-pending">Hasta <?= e(date('d/m/Y', strtotime($project['end_date']))) ?></span>
+          <span class="status status-pending" data-live-status>Hasta <?= e(date('d/m/Y', strtotime($project['end_date']))) ?></span>
         <?php endif; ?>
       </div>
       <p class="text-muted"><?= e(mb_strimwidth($project['description'], 0, 120, '...')) ?></p>
@@ -78,8 +79,8 @@ $pageTitle = 'Proyectos';
       </div>
       <div class="progress-row" style="margin-bottom:0">
         <span class="progress-label">Avance</span>
-        <span class="progress-pct"><?= $progressPct ?>%</span>
-        <div class="progress" style="grid-column:1/-1"><div class="progress-bar" style="width:<?= $progressPct ?>%"></div></div>
+        <span class="progress-pct"><span data-live-value="progress"><?= $progressPct ?></span>%</span>
+        <div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $progressPct ?>%"></div></div>
       </div>
       <div class="form-actions" style="margin-top:12px">
         <a class="btn btn-primary" href="<?= e(base_url('projects/board.php?id=' . $project['id'])) ?>">Tablero<?= $totalTasks > 0 ? ' (' . $totalTasks . ')' : '' ?></a>

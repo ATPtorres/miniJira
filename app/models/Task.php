@@ -82,32 +82,34 @@ final class Task
             $priority = 'medium';
         }
 
-        $stmt = db()->prepare(
-            'INSERT INTO project_tasks (project_id, title, description, assigned_student_id, points, priority, status, due_date)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([
-            $projectId, $data['title'], $data['description'] ?: null,
-            $data['assigned_student_id'] ?: null, $points, $priority,
-            $data['status'], $data['due_date'] ?: null,
-        ]);
+        self::mutate($projectId, static function () use ($projectId, $data, $points, $priority): bool {
+            $stmt = db()->prepare('INSERT INTO project_tasks (project_id,title,description,assigned_student_id,points,priority,status,due_date) VALUES(?,?,?,?,?,?,?,?)');
+            $stmt->execute([$projectId,$data['title'],$data['description'] ?: null,$data['assigned_student_id'] ?: null,$points,$priority,$data['status'],$data['due_date'] ?: null]);
+            return true;
+        });
     }
 
     public static function updateStatus(int $taskId, string $status): bool
     {
-        $stmt = db()->prepare('UPDATE project_tasks SET status = ? WHERE id = ? AND deleted_at IS NULL');
-        $stmt->execute([$status, $taskId]);
-        return $stmt->rowCount() === 1;
+        if (!in_array($status, self::STATUSES, true)) throw new InvalidArgumentException('Estado invalido');
+        $task = self::find($taskId);
+        if (!$task) return false;
+        return self::mutate((int) $task['project_id'], static function () use ($taskId, $status): bool {
+            $stmt = db()->prepare('UPDATE project_tasks SET status=? WHERE id=? AND deleted_at IS NULL AND status<>?');
+            $stmt->execute([$status,$taskId,$status]);
+            return $stmt->rowCount() === 1;
+        });
     }
 
-    /** Solo el docente puede calificar y mover a done. */
     public static function gradeAndComplete(int $taskId, int $gradeResult, string $gradeComment): bool
     {
-        $stmt = db()->prepare(
-            'UPDATE project_tasks SET status = "done", grade_result = ?, grade_comment = ? WHERE id = ? AND deleted_at IS NULL'
-        );
-        $stmt->execute([$gradeResult, $gradeComment !== '' ? $gradeComment : null, $taskId]);
-        return $stmt->rowCount() === 1;
+        $task = self::find($taskId);
+        if (!$task) return false;
+        return self::mutate((int) $task['project_id'], static function () use ($taskId, $gradeResult, $gradeComment): bool {
+            $stmt = db()->prepare('UPDATE project_tasks SET status="done",grade_result=?,grade_comment=? WHERE id=? AND deleted_at IS NULL');
+            $stmt->execute([$gradeResult,$gradeComment !== '' ? $gradeComment : null,$taskId]);
+            return $stmt->rowCount() === 1;
+        });
     }
 
     /** Solo el docente: actualiza nota y comentario sin cambiar el estado. */
@@ -162,7 +164,31 @@ final class Task
 
     public static function deleteTask(int $taskId): void
     {
-        $stmt = db()->prepare('UPDATE project_tasks SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
-        $stmt->execute([$taskId]);
+        $task = self::find($taskId);
+        if (!$task) return;
+        self::mutate((int) $task['project_id'], static function () use ($taskId): bool {
+            $stmt = db()->prepare('UPDATE project_tasks SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL');
+            $stmt->execute([$taskId]);
+            return $stmt->rowCount() === 1;
+        });
+    }
+
+    private static function mutate(int $projectId, callable $operation): bool
+    {
+        $pdo = db();
+        $ownsTransaction = !$pdo->inTransaction();
+        if ($ownsTransaction) $pdo->beginTransaction();
+        try {
+            $lock = $pdo->prepare('SELECT id FROM projects WHERE id=? AND deleted_at IS NULL FOR UPDATE');
+            $lock->execute([$projectId]);
+            if (!$lock->fetchColumn()) throw new RuntimeException('Proyecto no disponible');
+            $changed = $operation();
+            if ($changed) ProjectMetrics::record($projectId);
+            if ($ownsTransaction) $pdo->commit();
+            return $changed;
+        } catch (Throwable $e) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
     }
 }

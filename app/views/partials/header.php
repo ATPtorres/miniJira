@@ -68,6 +68,7 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
           <?php if (can('academic.view')): ?>
           <li><a href="<?= e(base_url(can('admin.access') ? 'admin/academic.php' : 'user/academic.php')) ?>">Academico</a></li>
           <?php endif; ?>
+          <li><a href="<?= e(base_url('projects/analytics.php')) ?>">Analitica</a></li>
           <li class="nav-notif-wrapper">
             <button type="button" class="nav-bell" aria-label="Notificaciones" id="notif-bell">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -78,13 +79,11 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
             <div class="notif-dropdown" id="notif-dropdown">
               <div class="notif-dropdown-header">
                 <span>Notificaciones</span>
-                <?php if ($notifCount > 0): ?>
-                <form method="post" action="<?= e(base_url('user/notifications.php')) ?>" class="inline-form">
+                <form method="post" action="<?= e(base_url('user/notifications.php')) ?>" class="inline-form" data-notification-action data-mark-all <?= $notifCount > 0 ? '' : 'hidden' ?>>
                   <?= csrf_field() ?>
                   <input type="hidden" name="action" value="mark-all-read">
                   <button type="submit" class="btn-link">Marcar todo leido</button>
                 </form>
-                <?php endif; ?>
               </div>
               <ul class="notif-dropdown-list">
                 <?php if ($recentNotifs === []): ?>

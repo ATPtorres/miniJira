@@ -53,6 +53,11 @@ return [
         'email_lookup_key' => getenv('SISTEMA_EMAIL_LOOKUP_KEY') ?: 'REEMPLAZA_POR_CLAVE_INDICE_64_HEX',
     ],
 
+    'notifications' => [
+        // auto: SSE en Apache/FPM, consultas breves en el servidor PHP de desarrollo.
+        'transport' => 'auto', // auto | sse | poll
+    ],
+
     'mail' => [
         // driver = log para desarrollo local; smtp envia correos reales.
         'driver'       => 'log',
