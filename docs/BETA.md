@@ -51,6 +51,32 @@ Se puede forzar `notifications.transport=poll` en la configuracion local.
 La campana, el contador y el listado se actualizan sin recargar; los filtros y
 paginacion del listado se conservan. El HTML de los mensajes se muestra como texto.
 
+## Hilos y adjuntos (ULAT-23 y ULAT-24)
+
+Los comentarios de proyecto y tarea muestran un comentario principal y sus
+respuestas en orden cronológico. En el proyecto cualquier miembro puede abrir
+un hilo. En tareas se conserva la regla existente: el docente abre hasta diez
+hilos y los miembros pueden responder. No se admiten respuestas de tercer nivel
+ni referencias a comentarios de otra tarea o proyecto.
+
+Las respuestas de proyecto heredan la visibilidad del hilo. En uno privado
+participan el autor original, el docente responsable y administradores globales;
+los demás no ven ni comentarios, ni avisos, ni adjuntos. El autor de una raíz
+anónima conserva el anonimato al responder. Los nuevos avisos llegan al docente
+y al autor del hilo según su visibilidad, sin mostrar el nombre anónimo.
+
+Todos los formularios, incluidos los de respuesta en tareas, permiten adjuntar
+documentos o multimedia. Se validan extensión y MIME real, 10 MB por archivo y
+50 MB compartidos por proyecto. Comentario, archivos y notificaciones se
+confirman juntos; un fallo revierte registros y elimina los archivos recién
+guardados. La descarga exige acceso al proyecto y al hilo privado.
+
+El autor puede eliminar su comentario y el gestor moderarlo. Eliminar una raíz
+elimina también sus respuestas y revoca todos sus adjuntos, libera el cupo y
+limpia los archivos físicos. Los comentarios anteriores se conservan como raíces.
+No hace falta una migración adicional en la rama Beta: ya dispone de `parent_id`
+y `comment_id`.
+
 ## Recordatorios en segundo plano
 
 El trabajo es independiente de las visitas del navegador:
@@ -176,5 +202,8 @@ Incluye peticiones multipart de ULAT-19: entrega con permisos predeterminados,
 fecha/hora y autor no falsificables, descarga y aviso al docente, aislamiento
 entre tareas y proyectos, cierres por vencimiento/calificación, CSRF, límites,
 lotes múltiples y reversión de archivos y registros ante un fallo de base de datos.
+Las pruebas de ULAT-23/24 verifican hilos de proyecto/tarea, privacidad heredada,
+anonimato, destinatarios de avisos, adjuntos de texto/imagen/audio, aislamiento,
+límites y reversión completa, eliminación de hilos y descarga desde Chromium.
 Usa Chromium del sistema o `CHROMIUM_BIN`; alternativamente instalar el navegador
 administrado por Playwright. No requiere credenciales externas.

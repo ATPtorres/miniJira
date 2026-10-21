@@ -92,6 +92,7 @@ require_once __DIR__ . '/services/ProjectMetrics.php';
 require_once __DIR__ . '/services/ProjectCharts.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/services/ProjectReport.php';
+require_once __DIR__ . '/services/CommentAttachments.php';
 require_once __DIR__ . '/services/EncryptionService.php';
 require_once __DIR__ . '/services/MailService.php';
 require_once __DIR__ . '/helpers/auth_helpers.php'; // sesion + can() + matriz de permisos

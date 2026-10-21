@@ -32,11 +32,6 @@ $tasks = Task::forProject($projectId);
 $canManage = can('tasks.manage') && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
 
 $comments = ProjectComment::forProject($projectId, current_user_id(), can('projects.manage.all'));
-$commentFiles = [];
-foreach ($comments as $c) {
-    $commentFiles[(int) $c['id']] = ProjectFile::forComment((int) $c['id']);
-}
-
 $metrics = ProjectMetrics::forProject($projectId);
 $totalTasks = $metrics['total'];
 $todoCount = $metrics['todo'];
@@ -196,80 +191,11 @@ $pageTitle = 'Panel · ' . $project['title'];
 require APP_PATH . '/app/views/partials/project-charts.php';
 ?>
 
-<h2 class="section-title" id="comentarios">Comentarios <span class="text-muted">(<?= count($comments) ?>)</span></h2>
-<section class="card comments-section">
-  <form method="post" action="<?= e(base_url('projects/dashboard.php?id=' . $projectId)) ?>" enctype="multipart/form-data" class="comment-form">
-    <?= csrf_field() ?>
-    <input type="hidden" name="action" value="create-comment">
-    <textarea name="body" rows="3" maxlength="2000" required placeholder="Escribe un comentario..."></textarea>
-    <div class="comment-form-row">
-      <label class="comment-field">
-        <span>Visibilidad</span>
-        <select name="visibility">
-          <option value="project">Todos los del proyecto</option>
-          <option value="private">Privado (solo tu y el docente responsable)</option>
-        </select>
-      </label>
-      <label class="comment-anon">
-        <input type="checkbox" name="is_anonymous" value="1"> Publicar como anonimo
-      </label>
-      <label class="comment-field comment-file-field">
-        <span>Adjuntos (imagen, video, audio o documento, max 10 MB c/u)</span>
-        <input type="file" name="files[]" multiple
-               accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar">
-      </label>
-      <button type="submit" class="btn btn-primary">Publicar</button>
-    </div>
-  </form>
-
-  <?php if ($comments === []): ?>
-    <p class="text-muted" style="font-size:.85rem;margin-top:12px">Todavia no hay comentarios.</p>
-  <?php else: ?>
-    <ul class="comment-list">
-      <?php foreach ($comments as $c):
-        $cid = (int) $c['id'];
-        $isMine = (int) $c['author_id'] === current_user_id();
-        $cFiles = $commentFiles[$cid] ?? [];
-        $anon = (int) $c['is_anonymous'] === 1;
-      ?>
-      <li class="comment-item<?= $c['visibility'] === 'private' ? ' comment-private' : '' ?>">
-        <div class="comment-head">
-          <span class="comment-author">
-            <?php if ($anon): ?>
-              Anonimo<?= $isMine ? ' (tu)' : '' ?>
-            <?php else: ?>
-              <?= e($c['author_name'] ?? 'Usuario') ?>
-              <span class="badge badge-<?= e($c['author_role']) ?>"><?= e(ucfirst((string) $c['author_role'])) ?></span>
-            <?php endif; ?>
-          </span>
-          <?php if ($c['visibility'] === 'private'): ?><span class="badge badge-private">Privado</span><?php endif; ?>
-          <span class="comment-date"><?= e(date('d/m/Y H:i', strtotime($c['created_at']))) ?></span>
-          <?php if ($isMine || $canManage): ?>
-          <form method="post" action="<?= e(base_url('projects/dashboard.php?id=' . $projectId)) ?>" class="comment-delete-form">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="delete-comment">
-            <input type="hidden" name="comment_id" value="<?= $cid ?>">
-            <button type="submit" class="btn btn-link btn-sm" onclick="return confirm('Eliminar este comentario?')">Eliminar</button>
-          </form>
-          <?php endif; ?>
-        </div>
-        <p class="comment-body"><?= nl2br(e($c['body'])) ?></p>
-        <?php if ($cFiles !== []): ?>
-        <div class="comment-attachments">
-          <?php foreach ($cFiles as $f): ?>
-          <a class="comment-attachment" href="<?= e(base_url('projects/download.php?file_id=' . (int) $f['id'])) ?>"
-             title="<?= e($f['original_name']) ?>">
-            <i class="fas fa-<?= e(ProjectFile::iconFor($f['mime_type'])) ?>"></i>
-            <span><?= e($f['original_name']) ?></span>
-            <small>(<?= e(ProjectFile::formatSize((int) $f['file_size'])) ?>)</small>
-          </a>
-          <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-      </li>
-      <?php endforeach; ?>
-    </ul>
-  <?php endif; ?>
-</section>
+<?php
+$threadComments = $comments;
+$commentTaskId = null;
+$commentUrl = 'projects/dashboard.php?id=' . $projectId;
+require APP_PATH . '/app/views/partials/comments.php';
+?>
 
 <?php require APP_PATH . '/app/views/partials/footer.php'; ?>

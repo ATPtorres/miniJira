@@ -1,6 +1,7 @@
 """HTTP, SSE, browser and real scheduler integration. Uses only *_test database fixtures."""
 import os, json, time, re, subprocess, signal, tempfile, pathlib, shutil, urllib.request as ur, urllib.parse as up, urllib.error as ue, http.cookiejar, contextlib
 from uploads import run_upload_checks
+from comments import run_comment_checks
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PHP=os.environ.get('PHP_BIN','php')
 ENV=os.environ.copy()
@@ -59,6 +60,7 @@ try:
     require(student.req('api/notifications.php',{'action':'mark-all-read'})[0]==419,'notification mutations require CSRF')
     project=FX['project']; task=FX['task']
     run_upload_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
+    run_comment_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
     for path in [f'api/project-metrics.php?id={project}',f'projects/analytics.php?id={project}',f'projects/report.php?id={project}']:
         require(outsider.req(path)[0]==403,'outsider denied '+path.split('?')[0])
     require(student.req('api/project-metrics.php?id='+str(project)+'&from=2026-02-31')[0]==400,'invalid date filter rejected')
@@ -116,6 +118,24 @@ try:
         browser=pw.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_BIN') or shutil.which('chromium'),args=['--no-sandbox'])
         page=browser.new_page();errors=[];page.on('pageerror',lambda exc:errors.append(str(exc)))
         page.goto(BASE+'login.php');page.fill('#email','estudiante@beta.test');page.fill('#password','Beta.Test2026!');page.click('button[type=submit]');page.wait_for_url('**/user/dashboard.php')
+        task_page=f'projects/task.php?project_id={project}&task_id={task}'
+        teacher.post(task_page,{'action':'create-task-comment','body':'ULAT2324 navegador hilo'})
+        browser_root=int(php(f'echo db()->query("SELECT MAX(id) FROM project_comments WHERE task_id={task}")->fetchColumn();'))
+        try:
+            page.goto(BASE+task_page)
+            form=page.locator(f'#hilo-{browser_root} > form.comment-form')
+            form.locator('textarea').fill('ULAT2324 navegador respuesta')
+            form.locator('input[type=file]').set_input_files({'name':'ulat2324-browser.txt','mimeType':'text/plain','buffer':b'Entrega desde el navegador\n'})
+            form.get_by_role('button',name='Responder',exact=True).click()
+            page.wait_for_load_state('networkidle')
+            thread=page.locator(f'#hilo-{browser_root}')
+            require('ULAT2324 navegador respuesta' in thread.inner_text() and thread.locator('a.comment-attachment').count()==1,'ULAT-23/24: browser submits task reply and attachment through visible form')
+            with page.expect_download() as downloaded:
+                thread.locator('a.comment-attachment').click()
+            require(pathlib.Path(downloaded.value.path()).read_bytes()==b'Entrega desde el navegador\n','ULAT-24: browser downloads submitted comment attachment')
+        finally:
+            teacher.post(task_page,{'action':'delete-task-comment','comment_id':browser_root})
+            php(f'db()->exec("DELETE FROM project_comments WHERE id={browser_root}");')
         page.goto(BASE+f'projects/analytics.php?id={project}')
         require(page.locator('[data-live-value="progress"]').inner_text()=='50','browser renders initial project chart')
         teacher.post(board,{'action':'update-task-status','task_id':task,'status':'doing','ajax':'1'})

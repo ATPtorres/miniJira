@@ -50,18 +50,7 @@ if (is_post()) {
 
 $files = ProjectFile::forProject($projectId, $taskId);
 
-// Comentarios de la tarea: raices (docente) con sus respuestas
 $taskComments = ProjectComment::forTask($taskId);
-$commentRoots = [];
-$commentReplies = [];
-foreach ($taskComments as $tc) {
-    if ($tc['parent_id'] === null) {
-        $commentRoots[(int) $tc['id']] = $tc;
-    } else {
-        $commentReplies[(int) $tc['parent_id']][] = $tc;
-    }
-}
-$commentRootCount = count($commentRoots);
 $pageTitle = $task['title'] . ' · ' . $project['title'];
 ?>
 <?php require APP_PATH . '/app/views/partials/header.php'; ?>
@@ -188,90 +177,11 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
   </div>
 </div>
 
-<section class="card comments-section" id="comentarios-tarea" style="margin-top:16px">
-  <div class="task-comments-head">
-    <h2 style="margin:0;font-size:1rem">Comentarios (<?= count($taskComments) ?>)</h2>
-    <?php if ($canManage): ?>
-      <span class="comment-limit-badge"><?= $commentRootCount ?>/<?= ProjectComment::MAX_ROOTS_PER_TASK ?> comentarios del docente</span>
-    <?php endif; ?>
-  </div>
-
-  <?php if ($canManage): ?>
-    <?php if ($commentRootCount < ProjectComment::MAX_ROOTS_PER_TASK): ?>
-    <form method="post" action="<?= e(base_url('projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId)) ?>" class="comment-form">
-      <?= csrf_field() ?>
-      <input type="hidden" name="action" value="create-task-comment">
-      <input type="hidden" name="parent_id" value="0">
-      <textarea name="body" rows="3" maxlength="2000" required placeholder="Escribe un comentario para el estudiante..."></textarea>
-      <button class="btn btn-primary btn-sm" type="submit">Publicar comentario</button>
-    </form>
-    <?php else: ?>
-      <p class="comment-limit-note">Has alcanzado el limite de <?= ProjectComment::MAX_ROOTS_PER_TASK ?> comentarios en esta tarea. Ya no puedes abrir mas comentarios (las respuestas siguen permitidas).</p>
-    <?php endif; ?>
-  <?php endif; ?>
-
-  <?php if ($commentRoots === []): ?>
-    <p class="events-empty">Todavia no hay comentarios en esta tarea.</p>
-  <?php else: ?>
-    <?php foreach ($commentRoots as $rid => $root):
-      $rootReplies = $commentReplies[$rid] ?? [];
-      $rootMine = (int) $root['author_id'] === current_user_id();
-    ?>
-    <div class="comment-item">
-      <div class="comment-head">
-        <span class="comment-author">
-          <?= e($root['author_name']) ?>
-          <span class="badge badge-<?= e($root['author_role']) ?>"><?= e(ucfirst((string) $root['author_role'])) ?></span>
-        </span>
-        <span class="comment-date"><?= e(date('d/m/Y H:i', strtotime($root['created_at']))) ?></span>
-        <?php if ($rootMine || $canManage): ?>
-        <form method="post" action="<?= e(base_url('projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId)) ?>" class="comment-delete-form">
-          <?= csrf_field() ?>
-          <input type="hidden" name="action" value="delete-task-comment">
-          <input type="hidden" name="comment_id" value="<?= (int) $rid ?>">
-          <button class="btn btn-link btn-sm" type="submit" onclick="return confirm('¿Eliminar este comentario y sus respuestas?')">Eliminar</button>
-        </form>
-        <?php endif; ?>
-      </div>
-      <p class="comment-body"><?= nl2br(e($root['body'])) ?></p>
-
-      <?php if ($rootReplies !== []): ?>
-      <div class="comment-replies">
-        <?php foreach ($rootReplies as $reply):
-          $replyMine = (int) $reply['author_id'] === current_user_id();
-        ?>
-        <div class="comment-item comment-reply">
-          <div class="comment-head">
-            <span class="comment-author">
-              <?= e($reply['author_name']) ?>
-              <span class="badge badge-<?= e($reply['author_role']) ?>"><?= e(ucfirst((string) $reply['author_role'])) ?></span>
-            </span>
-            <span class="comment-date"><?= e(date('d/m/Y H:i', strtotime($reply['created_at']))) ?></span>
-            <?php if ($replyMine || $canManage): ?>
-            <form method="post" action="<?= e(base_url('projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId)) ?>" class="comment-delete-form">
-              <?= csrf_field() ?>
-              <input type="hidden" name="action" value="delete-task-comment">
-              <input type="hidden" name="comment_id" value="<?= (int) $reply['id'] ?>">
-              <button class="btn btn-link btn-sm" type="submit" onclick="return confirm('¿Eliminar esta respuesta?')">Eliminar</button>
-            </form>
-            <?php endif; ?>
-          </div>
-          <p class="comment-body"><?= nl2br(e($reply['body'])) ?></p>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <?php endif; ?>
-
-      <form method="post" action="<?= e(base_url('projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId)) ?>" class="comment-reply-form">
-        <?= csrf_field() ?>
-        <input type="hidden" name="action" value="create-task-comment">
-        <input type="hidden" name="parent_id" value="<?= (int) $rid ?>">
-        <textarea name="body" rows="2" maxlength="2000" required placeholder="Escribe tu respuesta..."></textarea>
-        <button class="btn btn-sm btn-outline-dark" type="submit">Responder</button>
-      </form>
-    </div>
-    <?php endforeach; ?>
-  <?php endif; ?>
-</section>
+<?php
+$threadComments = $taskComments;
+$commentTaskId = $taskId;
+$commentUrl = 'projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId;
+require APP_PATH . '/app/views/partials/comments.php';
+?>
 
 <?php require APP_PATH . '/app/views/partials/footer.php'; ?>

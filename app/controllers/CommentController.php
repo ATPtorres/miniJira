@@ -1,252 +1,156 @@
 <?php
-/** Comentarios de proyectos: crear (con adjuntos multimedia) y eliminar. */
-
+/** Conversaciones de proyectos y tareas, con adjuntos transaccionales. */
 declare(strict_types=1);
 
 final class CommentController
 {
-    /** POST: crea un comentario con visibilidad/anonimato y adjuntos opcionales. */
     public static function store(int $projectId): void
     {
-        if (!is_post()) {
-            redirect('projects/dashboard.php?id=' . $projectId);
-        }
-        requireCsrf();
-
-        $body = trim((string) post('body'));
-        if ($body === '') {
-            flash_set('error', 'El comentario no puede estar vacio.');
-            redirect('projects/dashboard.php?id=' . $projectId);
-        }
-        if (mb_strlen($body) > 2000) {
-            flash_set('error', 'El comentario no puede superar los 2000 caracteres.');
-            redirect('projects/dashboard.php?id=' . $projectId);
-        }
-
-        $visibility = (string) post('visibility');
-        if (!in_array($visibility, ProjectComment::VISIBILITIES, true)) {
-            $visibility = 'project';
-        }
-        $isAnonymous = post('is_anonymous') === '1' ? 1 : 0;
-
-        // Validar todos los adjuntos ANTES de crear el comentario (todo o nada).
-        $files = $_FILES['files'] ?? null;
-        $pending = [];
-        if ($files !== null && ($files['error'][0] ?? $files['error']) !== UPLOAD_ERR_NO_FILE) {
-            $totalSize = ProjectFile::totalSize($projectId);
-            $count = is_array($files['name']) ? count($files['name']) : 1;
-
-            for ($i = 0; $i < $count; $i++) {
-                $name = $files['name'][$i] ?? $files['name'];
-                $tmpName = $files['tmp_name'][$i] ?? $files['tmp_name'];
-                $error = $files['error'][$i] ?? $files['error'];
-                $size = (int) ($files['size'][$i] ?? $files['size']);
-
-                if ($error !== UPLOAD_ERR_OK) {
-                    flash_set('error', 'Error al subir "' . e($name) . '".');
-                    redirect('projects/dashboard.php?id=' . $projectId);
-                }
-                if ($size > ProjectFile::MAX_FILE_SIZE) {
-                    flash_set('error', 'El archivo "' . e($name) . '" supera el limite de 10 MB.');
-                    redirect('projects/dashboard.php?id=' . $projectId);
-                }
-                $totalSize += $size;
-                if ($totalSize > ProjectFile::MAX_PROJECT_SIZE) {
-                    flash_set('error', 'Se excede el limite total de 50 MB por proyecto.');
-                    redirect('projects/dashboard.php?id=' . $projectId);
-                }
-
-                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                $mimeType = mime_content_type($tmpName);
-                if ($mimeType === false) {
-                    $mimeType = 'application/octet-stream';
-                }
-                if (!ProjectFile::isValidType($mimeType, $ext)) {
-                    flash_set('error', 'Tipo de archivo no permitido: "' . e($name) . '".');
-                    redirect('projects/dashboard.php?id=' . $projectId);
-                }
-
-                $pending[] = [
-                    'name' => $name,
-                    'tmp'   => $tmpName,
-                    'size'  => $size,
-                    'ext'   => $ext,
-                    'mime'  => $mimeType,
-                ];
-            }
-        }
-
-        $commentId = ProjectComment::create([
-            'project_id'  => $projectId,
-            'task_id'     => null,
-            'author_id'   => current_user_id(),
-            'body'        => $body,
-            'is_anonymous' => $isAnonymous,
-            'visibility'  => $visibility,
-        ]);
-
-        if ($pending !== []) {
-            $projectDir = ProjectFile::projectDir($projectId);
-            if (!is_dir($projectDir)) {
-                mkdir($projectDir, 0755, true);
-            }
-            foreach ($pending as $p) {
-                $storedName = bin2hex(random_bytes(16)) . '.' . $p['ext'];
-                if (!move_uploaded_file($p['tmp'], $projectDir . '/' . $storedName)) {
-                    flash_set('error', 'No se pudo guardar el adjunto "' . e($p['name']) . '".');
-                    continue;
-                }
-                ProjectFile::create([
-                    'project_id'    => $projectId,
-                    'task_id'       => null,
-                    'uploaded_by_id' => current_user_id(),
-                    'original_name' => $p['name'],
-                    'stored_name'   => $storedName,
-                    'mime_type'     => $p['mime'],
-                    'file_size'     => $p['size'],
-                    'description'   => 'Adjunto de comentario #' . $commentId,
-                    'category'      => 'other',
-                    'comment_id'    => $commentId,
-                ]);
-            }
-        }
-
-        self::notify($projectId, $commentId, $isAnonymous === 1, $visibility, $body);
-
-        flash_set('success', 'Comentario publicado.');
-        redirect('projects/dashboard.php?id=' . $projectId);
+        self::storeComment($projectId, null);
     }
 
-    /** POST: elimina (logico) un comentario y sus adjuntos. */
-    public static function delete(int $projectId): void
-    {
-        if (!is_post()) {
-            redirect('projects/dashboard.php?id=' . $projectId);
-        }
-        requireCsrf();
-
-        $commentId = (int) post('comment_id');
-        $comment = ProjectComment::find($commentId);
-        $canManage = can('tasks.manage')
-            && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
-
-        if ($comment === null || (int) $comment['project_id'] !== $projectId) {
-            flash_set('error', 'El comentario no es valido.');
-            redirect('projects/dashboard.php?id=' . $projectId);
-        }
-        if ((int) $comment['author_id'] !== current_user_id() && !$canManage) {
-            access_denied();
-        }
-
-        foreach (ProjectFile::forComment($commentId) as $file) {
-            $path = ProjectFile::projectDir($projectId) . '/' . $file['stored_name'];
-            if (file_exists($path)) {
-                unlink($path);
-            }
-            ProjectFile::delete((int) $file['id']);
-        }
-
-        ProjectComment::delete($commentId);
-        flash_set('success', 'Comentario eliminado.');
-        redirect('projects/dashboard.php?id=' . $projectId);
-    }
-
-    /** POST: crea un comentario en una tarea (raiz del docente o respuesta). */
     public static function storeTask(int $projectId, int $taskId): void
     {
-        $back = 'projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId;
-        if (!is_post()) {
-            redirect($back);
-        }
+        self::storeComment($projectId, $taskId);
+    }
+
+    private static function storeComment(int $projectId, ?int $taskId): void
+    {
+        $back = self::location($projectId, $taskId);
+        if (!is_post()) redirect($back);
         requireCsrf();
-
-        $body = trim((string) post('body'));
-        if ($body === '') {
-            flash_set('error', 'El comentario no puede estar vacio.');
+        if (!Project::userCanAccess($projectId, current_user_id(), can('projects.manage.all'))) access_denied();
+        $body = trim(post('body'));
+        if ($body === '' || mb_strlen($body) > 2000) {
+            flash_set('error', 'El comentario debe tener entre 1 y 2000 caracteres.');
             redirect($back);
         }
-        if (mb_strlen($body) > 2000) {
-            flash_set('error', 'El comentario no puede superar los 2000 caracteres.');
+        $parentId = max(0, (int) post('parent_id'));
+        $visibility = in_array(post('visibility'), ProjectComment::VISIBILITIES, true) ? post('visibility') : 'project';
+        $anonymous = $taskId === null && post('is_anonymous') === '1';
+        $savedPaths = [];
+        $db = db();
+        try {
+            $pending = CommentAttachments::validate($_FILES['files'] ?? null);
+            $db->beginTransaction();
+            // El mismo candado que tareas y entregas: cupo y limites consistentes.
+            $lock = $db->prepare('SELECT id FROM projects WHERE id = ? FOR UPDATE');
+            $lock->execute([$projectId]);
+            if (!Project::userCanAccess($projectId, current_user_id(), can('projects.manage.all'))) {
+                $db->rollBack();
+                access_denied();
+            }
+            if ($taskId !== null) {
+                $task = Task::find($taskId);
+                if ($task === null || (int) $task['project_id'] !== $projectId) {
+                    throw new InvalidArgumentException('La tarea no es válida.');
+                }
+                $visibility = 'project';
+            }
+            if ($parentId > 0) {
+                $parent = ProjectComment::find($parentId);
+                if ($parent === null || (int) $parent['project_id'] !== $projectId
+                    || ($parent['task_id'] === null ? null : (int) $parent['task_id']) !== $taskId
+                    || $parent['parent_id'] !== null
+                    || !ProjectComment::isVisibleTo($parent, current_user_id(), can('projects.manage.all'))) {
+                    throw new InvalidArgumentException('El hilo al que respondes no está disponible.');
+                }
+                // Una respuesta nunca puede convertir un hilo privado en público.
+                $visibility = $parent['visibility'];
+                if ((int) $parent['is_anonymous'] === 1 && (int) $parent['author_id'] === current_user_id()) {
+                    $anonymous = true;
+                }
+            } elseif ($taskId !== null) {
+                $canManage = can('tasks.manage') && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
+                if (!$canManage) throw new InvalidArgumentException('Solo el docente puede abrir un comentario en la tarea. Usa "Responder".');
+                if (ProjectComment::countRoots($taskId) >= ProjectComment::MAX_ROOTS_PER_TASK) {
+                    throw new InvalidArgumentException('Límite de comentarios alcanzado en esta tarea.');
+                }
+            }
+            $commentId = ProjectComment::create([
+                'project_id' => $projectId, 'task_id' => $taskId,
+                'parent_id' => $parentId ?: null, 'author_id' => current_user_id(),
+                'body' => $body, 'is_anonymous' => $anonymous, 'visibility' => $visibility,
+            ]);
+            CommentAttachments::save($projectId, $taskId, $commentId, $pending, $savedPaths);
+            // El aviso se confirma junto con el comentario y sus archivos.
+            if ($taskId !== null) self::notifyTask($projectId, $taskId, $parentId > 0, $body);
+            else self::notify($projectId, $commentId, $anonymous, $visibility, $body);
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            foreach ($savedPaths as $path) {
+                if (is_file($path)) unlink($path);
+            }
+            error_log('Error publicando comentario: ' . $e->getMessage());
+            flash_set('error', $e instanceof InvalidArgumentException ? $e->getMessage() : 'No se pudo publicar el comentario y sus adjuntos. Inténtalo de nuevo.');
             redirect($back);
         }
-
-        $canManage = can('tasks.manage')
-            && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
-        $task = Task::find($taskId);
-        if ($task === null || (int) $task['project_id'] !== $projectId) {
-            flash_set('error', 'La tarea no es valida.');
-            redirect($back);
-        }
-        $isMember = Project::userCanAccess($projectId, current_user_id(), can('projects.manage.all'));
-        if (!$canManage && !$isMember) {
-            access_denied();
-        }
-
-        $parentId = (int) post('parent_id');
-
-        if ($parentId <= 0) {
-            // Raiz: solo el docente, con limite de comentarios por tarea.
-            if (!$canManage) {
-                flash_set('error', 'Solo el docente puede abrir un comentario en la tarea. Usa "Responder".');
-                redirect($back);
-            }
-            if (ProjectComment::countRoots($taskId) >= ProjectComment::MAX_ROOTS_PER_TASK) {
-                flash_set('error', 'Limite de ' . ProjectComment::MAX_ROOTS_PER_TASK . ' comentarios alcanzado en esta tarea.');
-                redirect($back);
-            }
-        } else {
-            $parent = ProjectComment::find($parentId);
-            if ($parent === null || (int) $parent['task_id'] !== $taskId || (int) $parent['project_id'] !== $projectId) {
-                flash_set('error', 'El comentario al que respondes no es valido.');
-                redirect($back);
-            }
-            if ($parent['parent_id'] !== null) {
-                flash_set('error', 'Responde directamente al comentario principal.');
-                redirect($back);
-            }
-        }
-
-        $commentId = ProjectComment::create([
-            'project_id'  => $projectId,
-            'task_id'     => $taskId,
-            'parent_id'   => $parentId > 0 ? $parentId : null,
-            'author_id'   => current_user_id(),
-            'body'        => $body,
-            'is_anonymous' => 0,
-            'visibility'  => 'project',
-        ]);
-
-        self::notifyTask($projectId, $taskId, $parentId > 0, $body);
-
         flash_set('success', $parentId > 0 ? 'Respuesta publicada.' : 'Comentario publicado.');
         redirect($back);
     }
 
-    /** POST: elimina un comentario de tarea (autor o gestor; una raiz borra sus respuestas). */
+    public static function delete(int $projectId): void
+    {
+        self::deleteComment($projectId, null);
+    }
+
     public static function deleteTask(int $projectId, int $taskId): void
     {
-        $back = 'projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId;
-        if (!is_post()) {
-            redirect($back);
-        }
+        self::deleteComment($projectId, $taskId);
+    }
+
+    private static function deleteComment(int $projectId, ?int $taskId): void
+    {
+        $back = self::location($projectId, $taskId);
+        if (!is_post()) redirect($back);
         requireCsrf();
-
-        $canManage = can('tasks.manage')
-            && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
-        $commentId = (int) post('comment_id');
-        $comment = ProjectComment::find($commentId);
-
-        if ($comment === null || (int) $comment['project_id'] !== $projectId || (int) $comment['task_id'] !== $taskId) {
-            flash_set('error', 'El comentario no es valido.');
+        if (!Project::userCanAccess($projectId, current_user_id(), can('projects.manage.all'))) access_denied();
+        $db = db();
+        $db->beginTransaction();
+        try {
+            $lock = $db->prepare('SELECT id FROM projects WHERE id = ? FOR UPDATE');
+            $lock->execute([$projectId]);
+            if (!Project::userCanAccess($projectId, current_user_id(), can('projects.manage.all'))) {
+                $db->rollBack();
+                access_denied();
+            }
+            $commentId = (int) post('comment_id');
+            $comment = ProjectComment::find($commentId);
+            $canManage = can('tasks.manage') && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
+            if ($comment === null || (int) $comment['project_id'] !== $projectId
+                || ($comment['task_id'] === null ? null : (int) $comment['task_id']) !== $taskId
+                || !ProjectComment::isVisibleTo($comment, current_user_id(), can('projects.manage.all'))
+                || ((int) $comment['author_id'] !== current_user_id() && !$canManage)) {
+                $db->rollBack();
+                access_denied();
+            }
+            $stmt = $db->prepare('SELECT f.* FROM project_files f JOIN project_comments c ON c.id=f.comment_id
+                WHERE f.project_id=? AND f.deleted_at IS NULL AND (c.id=? OR c.parent_id=?)');
+            $stmt->execute([$projectId, $commentId, $commentId]);
+            $files = $stmt->fetchAll();
+            foreach ($files as $file) ProjectFile::delete((int) $file['id']);
+            ProjectComment::delete($commentId);
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Error eliminando comentario: ' . $e->getMessage());
+            flash_set('error', 'No se pudo eliminar el comentario. Inténtalo de nuevo.');
             redirect($back);
         }
-        if ((int) $comment['author_id'] !== current_user_id() && !$canManage) {
-            access_denied();
+        // Primero revocar el acceso en la BD; un fallo de limpieza no expone archivos.
+        foreach ($files as $file) {
+            $path = ProjectFile::projectDir($projectId) . '/' . $file['stored_name'];
+            if (is_file($path) && !@unlink($path)) error_log('No se pudo limpiar adjunto eliminado #' . $file['id']);
         }
-
-        ProjectComment::delete($commentId);
-        flash_set('success', 'Comentario eliminado.');
+        flash_set('success', 'Comentario y adjuntos eliminados.');
         redirect($back);
+    }
+
+    private static function location(int $projectId, ?int $taskId): string
+    {
+        return $taskId === null ? 'projects/dashboard.php?id=' . $projectId
+            : 'projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId;
     }
 
     /** Notifica a la otra parte de la conversacion de la tarea (raiz -> estudiante; respuesta -> la otra parte). */
@@ -282,6 +186,7 @@ final class CommentController
         }
 
         foreach (array_unique($targets) as $uid) {
+            if (!Project::userCanAccess($projectId, $uid)) continue;
             Notification::create($uid, 'comment_added', 'Nuevo comentario en tarea', $message, $link);
         }
     }
@@ -304,6 +209,11 @@ final class CommentController
         $excerpt = mb_substr((string) preg_replace('/\s+/', ' ', $body), 0, 80);
 
         $notifyUserIds = [];
+        $comment = ProjectComment::find($commentId);
+        if ($comment['parent_id'] !== null) {
+            $root = ProjectComment::find((int) $comment['parent_id']);
+            $notifyUserIds[] = (int) $root['author_id'];
+        }
         if ($visibility === 'private') {
             if ($teacherId !== $authorId) {
                 $notifyUserIds[] = $teacherId;
@@ -322,6 +232,8 @@ final class CommentController
         $who = $anonymous ? 'Un participante anonimo' : $authorName;
 
         foreach ($notifyUserIds as $uid) {
+            if ($uid === $authorId || !Project::userCanAccess($projectId, $uid)
+                || !ProjectComment::isVisibleTo($comment, $uid, false)) continue;
             Notification::create(
                 $uid,
                 'comment_added',
