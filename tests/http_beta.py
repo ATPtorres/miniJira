@@ -1,5 +1,6 @@
 """HTTP, SSE, browser and real scheduler integration. Uses only *_test database fixtures."""
 import os, json, time, re, subprocess, signal, tempfile, pathlib, shutil, urllib.request as ur, urllib.parse as up, urllib.error as ue, http.cookiejar, contextlib
+from uploads import run_upload_checks
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PHP=os.environ.get('PHP_BIN','php')
 ENV=os.environ.copy()
@@ -43,7 +44,7 @@ def stream_event(response,wanted):
 
 log=open(pathlib.Path(tempfile.gettempdir())/'minijira-beta-http.log','w')
 env=ENV.copy();env['PHP_CLI_SERVER_WORKERS']='4'
-server=subprocess.Popen([PHP,'-S','127.0.0.1:8081','-t','public','scripts/dev-router.php'],cwd=ROOT,env=env,stdout=log,stderr=log,start_new_session=True)
+server=subprocess.Popen([PHP,'-d','upload_max_filesize=12M','-d','post_max_size=55M','-S','127.0.0.1:8081','-t','public','scripts/dev-router.php'],cwd=ROOT,env=env,stdout=log,stderr=log,start_new_session=True)
 try:
     anon=Client()
     for _ in range(60):
@@ -57,6 +58,7 @@ try:
     require(json.loads(outsider.req('api/project-metrics.php?summary=1')[1])['metrics']['total']==0,'analytics summary excludes other users projects')
     require(student.req('api/notifications.php',{'action':'mark-all-read'})[0]==419,'notification mutations require CSRF')
     project=FX['project']; task=FX['task']
+    run_upload_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
     for path in [f'api/project-metrics.php?id={project}',f'projects/analytics.php?id={project}',f'projects/report.php?id={project}']:
         require(outsider.req(path)[0]==403,'outsider denied '+path.split('?')[0])
     require(student.req('api/project-metrics.php?id='+str(project)+'&from=2026-02-31')[0]==400,'invalid date filter rejected')

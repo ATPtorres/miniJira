@@ -16,3 +16,4 @@ desktop.ini
 /vendor/
 *.log
 *.tmp
+__pycache__/

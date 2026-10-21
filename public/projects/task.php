@@ -22,6 +22,7 @@ if ($task === null || (int) $task['project_id'] !== $projectId) {
 $project = Project::find($projectId);
 $canManage = can('tasks.manage') && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
 $isAssignedStudent = can('tasks.update.assigned') && (int) $task['assigned_student_id'] === current_user_id();
+$canUpload = FileController::canUpload($projectId, $taskId);
 
 // La pagina es visible para cualquier miembro del proyecto (el tablero
 // enlaza todas las tareas); el acceso ya quedo validado arriba con
@@ -32,12 +33,7 @@ $isAssignedStudent = can('tasks.update.assigned') && (int) $task['assigned_stude
 if (is_post()) {
     $action = post('action');
     if ($action === 'upload-file') {
-        requirePermission('files.upload');
-        // Docente sube a cualquier tarea; estudiante solo a la suya
-        if (!$canManage && !$isAssignedStudent) {
-            access_denied();
-        }
-        FileController::upload($projectId);
+        FileController::upload($projectId, $taskId);
     }
     if ($action === 'delete-file') {
         requirePermission('files.delete');
@@ -118,7 +114,8 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
     <section class="card">
       <h2>Archivos adjuntos (<?= count($files) ?>)</h2>
 
-      <?php if ($canManage || $isAssignedStudent): ?>
+      <?php if ($canUpload): ?>
+      <p class="text-muted">Sube tu entregable. Se registrarán automáticamente el autor, la fecha y la hora. Máximo 10 MB por archivo y 50 MB por proyecto.</p>
       <form method="post" action="<?= e(base_url('projects/task.php?project_id=' . $projectId . '&task_id=' . $taskId)) ?>" enctype="multipart/form-data" style="margin-bottom:16px">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="upload-file">
@@ -143,6 +140,8 @@ $pageTitle = $task['title'] . ' · ' . $project['title'];
         </div>
         <button class="btn btn-primary btn-sm" type="submit" onclick="return confirm('¿Subir archivo(s)?')">Subir</button>
       </form>
+      <?php elseif ($isAssignedStudent): ?>
+        <p class="text-muted">La entrega está cerrada: la tarea está bloqueada o el proyecto ha vencido.</p>
       <?php endif; ?>
 
       <?php if ($files === []): ?>

@@ -125,6 +125,28 @@ Los valores de usuario se escapan y el texto soporta acentos mediante DejaVu San
 
 ## Verificacion
 
+### Entregables (ULAT-19)
+
+En el detalle de la tarea, el estudiante asignado puede subir uno o varios
+entregables con su permiso `tasks.update.assigned`. No necesita el permiso de
+recursos generales `files.upload`; este sigue reservado a quienes gestionan
+el proyecto. La tarea debe pertenecer al proyecto y el estudiante debe seguir
+siendo miembro. Las tareas bloqueadas (vencidas o calificadas) y los proyectos
+vencidos no aceptan nuevas entregas del estudiante; el docente conserva su acceso.
+
+Cada archivo registra automáticamente tarea, autor y fecha/hora del servidor,
+que aparecen junto al archivo. Después de subir, se vuelve a la tarea y se avisa
+al docente con un enlace directo. Se valida el lote completo, tipo, extensión,
+10 MB por archivo y 50 MB por proyecto; si falla el guardado, se revierte el lote.
+Este arreglo no requiere migraciones de base de datos.
+
+Para admitir archivos de hasta 10 MB, configurar PHP con
+`upload_max_filesize=10M` y `post_max_size=55M` (y reiniciar Apache/FPM).
+El límite de PHP puede ser más restrictivo que el de la aplicación. Ajustar
+también el límite del servidor HTTP si corresponde.
+
+### Pruebas automatizadas
+
 `tests/beta.php` inicializa y reinicia datos de la base seleccionada: usar
 exclusivamente una BD dedicada, con un nombre que termine en `_test` y un usuario
 con permisos sobre ella. No usar una copia con datos que se deban conservar.
@@ -150,5 +172,9 @@ El runner levanta su propio servidor de pruebas con varios workers en el puerto
 8081, verifica aislamiento y CSRF, comentarios privados/anonimos, eventos,
 revocacion SSE al cerrar sesion, concordancia PDF/panel, actualizacion visible en
 Chromium y ejecucion real de un Cron de prueba. Detiene los procesos que crea.
+Incluye peticiones multipart de ULAT-19: entrega con permisos predeterminados,
+fecha/hora y autor no falsificables, descarga y aviso al docente, aislamiento
+entre tareas y proyectos, cierres por vencimiento/calificación, CSRF, límites,
+lotes múltiples y reversión de archivos y registros ante un fallo de base de datos.
 Usa Chromium del sistema o `CHROMIUM_BIN`; alternativamente instalar el navegador
 administrado por Playwright. No requiere credenciales externas.
