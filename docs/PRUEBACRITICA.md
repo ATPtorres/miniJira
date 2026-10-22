@@ -122,3 +122,8 @@ docente, clase inactiva, aislamiento de archivos/PDF/historial/API/avisos, revoc
 SSE, importación CSV atómica, clasificación de legados y métricas agrupadas.
 Chromium comprueba filtros, navegación, importación de participantes, entregas,
 versiones y descargas. También se ejecutan las regresiones Beta y el cron real.
+
+## Poblado para pruebas manuales
+
+Ejecutar `php database/populate_demo.php` para crear un conjunto pequeño de datos.
+Ver [cuentas, contraseña y escenarios demo](DEMO.md). No reinicia datos existentes.
