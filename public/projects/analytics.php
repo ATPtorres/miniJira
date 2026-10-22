@@ -2,14 +2,17 @@
 declare(strict_types=1);
 require_once __DIR__.'/../../app/bootstrap.php';
 requireAuth();
-$projects=Project::accessibleTo(current_user_id(),can('projects.manage.all'));
+$summaryRaw=Project::summaryFor(current_user_id(),can('projects.manage.all'));
+$pages=max(1,(int)ceil($summaryRaw['projects']/25));$page=max(1,min((int)($_GET['page']??1),$pages));
+$projects=Project::accessibleTo(current_user_id(),can('projects.manage.all'),25,($page-1)*25);
 $projectId=(int)($_GET['id'] ?? 0);
 $ids=array_map('intval',array_column($projects,'id'));
-if ($projectId !== 0 && !in_array($projectId,$ids,true)) access_denied();
+if ($projectId !== 0 && !Project::userCanAccess($projectId,current_user_id(),can('projects.manage.all'))) access_denied();
+if($projectId && !in_array($projectId,$ids,true))$projects[]=Project::find($projectId);
 $error='';
 try { [$from,$to]=ProjectMetrics::dateRange($_GET['from'] ?? null,$_GET['to'] ?? null); }
 catch (InvalidArgumentException $e) { $error=$e->getMessage(); [$from,$to]=ProjectMetrics::dateRange(null,null); }
-$summary=ProjectMetrics::fromCounts(Project::summaryFor(current_user_id(),can('projects.manage.all')));
+$summary=ProjectMetrics::fromCounts($summaryRaw);
 $pageTitle='Analitica de proyectos';
 require APP_PATH.'/app/views/partials/header.php';
 ?>
@@ -37,4 +40,5 @@ require APP_PATH.'/app/views/partials/header.php';
 <div class="progress-row" data-project-progress="<?= (int)$p['id'] ?>"><a href="<?= e(base_url('projects/analytics.php?id='.$p['id'].'&from='.$from.'&to='.$to)) ?>"><?= e($p['title']) ?></a><span><span data-live-value="progress"><?= $m['progress'] ?></span>%</span><div class="progress" style="grid-column:1/-1"><div class="progress-bar" data-live-bar style="width:<?= $m['progress'] ?>%"></div></div></div>
 <?php endforeach; ?></section>
 <?php endif; ?>
+<?php if(!$projectId):?><nav><?php if($page>1):?><a href="?<?=e(http_build_query(['page'=>$page-1,'from'=>$from,'to'=>$to]))?>">Anterior</a><?php endif;?> Página <?=$page?> de <?=$pages?> <?php if($page<$pages):?><a href="?<?=e(http_build_query(['page'=>$page+1,'from'=>$from,'to'=>$to]))?>">Siguiente</a><?php endif;?></nav><?php endif;?>
 <?php require APP_PATH.'/app/views/partials/footer.php'; ?>

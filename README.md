@@ -1,6 +1,8 @@
-# Sistema Universitario
+# MiniJira — tareas y entregas
 
-Sistema de gestión universitario estilo JIRA, construido en **PHP 8.x + MySQL/MariaDB (XAMPP)** sin frameworks.
+Plataforma de tareas universitarias estilo JIRA, construida en **PHP 8.x + MySQL/MariaDB (XAMPP)** sin frameworks.
+
+La rama `pruebacritica` incorpora clases y participantes autorizados, aislamiento académico y un panel de carga de trabajo. La universidad conserva su plataforma de inscripciones y gestión oficial de docentes. Ver [alcance, migración y uso de pruebacritica](docs/PRUEBACRITICA.md).
 
 La rama Beta agrega notificaciones con actualizacion automatica, Cron de recordatorios,
 analitica real e informes PDF. Ver [instalacion, ejecucion y pruebas de Beta](docs/BETA.md).
@@ -64,8 +66,9 @@ Ver `docs\CREDENCIALES_DEV.md`. Todos los usuarios usan la contraseña `Clave.20
 - Contraseña auto-generada segura
 
 ### Proyectos universitarios (Docente)
+- Cada proyecto pertenece a una clase autorizada; el equipo solo incluye estudiantes de esa clase.
 - Crear proyecto con: título, descripción, objetivos, fechas, estudiantes
-- Docente responsable auto-asignado
+- Docente responsable obtenido de la clase; editar como administrador no cambia su propietario
 - Validación: end_date > start_date, campos requeridos
 - Editar información general
 - Eliminación lógica (soft delete)

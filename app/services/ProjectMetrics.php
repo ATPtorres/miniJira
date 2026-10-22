@@ -51,10 +51,13 @@ final class ProjectMetrics
             COUNT(t.id) AS total, COALESCE(SUM(t.status="done"),0) AS done,
             COALESCE(SUM(t.points),0) AS points, COALESCE(SUM(t.grade_result),0) AS earned
             FROM project_students ps JOIN users u ON u.id=ps.student_id
+            JOIN projects p ON p.id=ps.project_id JOIN classroom_members cm ON cm.classroom_id=p.classroom_id AND cm.student_id=u.id AND cm.is_active=1
             LEFT JOIN project_tasks t ON t.project_id=ps.project_id AND t.assigned_student_id=u.id AND t.deleted_at IS NULL
-            WHERE ps.project_id=? GROUP BY u.id ORDER BY u.first_name, u.last_name');
+            WHERE ps.project_id=? AND u.is_active=1 AND EXISTS(SELECT 1 FROM roles r WHERE r.id=u.role_id AND r.code="estudiante") GROUP BY u.id ORDER BY u.first_name, u.last_name');
         $stmt->execute([$projectId]);
-        return array_map(static function (array $s): array {
+        $manager=Project::userCanManage($projectId,current_user_id(),can('projects.manage.all'));
+        return array_map(static function (array $s) use ($manager): array {
+            if (!$manager && (int)$s['id']!==current_user_id()) $s['earned']=null;
             $s['progress'] = self::percentage((int) $s['done'], (int) $s['total']);
             return $s;
         }, $stmt->fetchAll());

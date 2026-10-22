@@ -23,6 +23,7 @@ $project = Project::find($projectId);
 $canManage = can('tasks.manage') && Project::userCanManage($projectId, current_user_id(), can('projects.manage.all'));
 $isAssignedStudent = can('tasks.update.assigned') && (int) $task['assigned_student_id'] === current_user_id();
 $canUpload = FileController::canUpload($projectId, $taskId);
+if (!$canManage && (int)$task['assigned_student_id']!==current_user_id()) {$task['grade_result']=null;$task['grade_comment']=null;}
 
 // La pagina es visible para cualquier miembro del proyecto (el tablero
 // enlaza todas las tareas); el acceso ya quedo validado arriba con

@@ -31,7 +31,10 @@ final class Task
      */
     public static function isLocked(int $taskId): bool
     {
-        $task = self::find($taskId);
+        return self::locked(self::find($taskId));
+    }
+    public static function locked(?array $task): bool
+    {
         if ($task === null) {
             return true;
         }
@@ -70,7 +73,10 @@ final class Task
              WHERE t.project_id = ? AND t.deleted_at IS NULL ORDER BY t.due_date IS NULL, t.due_date, t.id DESC'
         );
         $stmt->execute([$projectId]);
-        return $stmt->fetchAll();
+        $rows=$stmt->fetchAll();
+        $manager=Project::userCanManage($projectId,current_user_id(),can('projects.manage.all'));
+        foreach($rows as &$row) if (!$manager && (int)$row['assigned_student_id']!==current_user_id()) {$row['grade_result']=null;$row['grade_comment']=null;}
+        unset($row);return $rows;
     }
 
     public static function create(int $projectId, array $data): void
@@ -83,6 +89,7 @@ final class Task
         }
 
         self::mutate($projectId, static function () use ($projectId, $data, $points, $priority): bool {
+            if(!empty($data['assigned_student_id']) && !in_array((int)$data['assigned_student_id'],Project::studentIds($projectId),true))throw new InvalidArgumentException('Participante no autorizado en el proyecto.');
             $stmt = db()->prepare('INSERT INTO project_tasks (project_id,title,description,assigned_student_id,points,priority,status,due_date) VALUES(?,?,?,?,?,?,?,?)');
             $stmt->execute([$projectId,$data['title'],$data['description'] ?: null,$data['assigned_student_id'] ?: null,$points,$priority,$data['status'],$data['due_date'] ?: null]);
             return true;
@@ -95,10 +102,14 @@ final class Task
         $task = self::find($taskId);
         if (!$task) return false;
         return self::mutate((int) $task['project_id'], static function () use ($taskId, $status): bool {
+            if(PHP_SAPI!=='cli'){
+                $fresh=self::find($taskId);$manager=$fresh && can('tasks.manage') && Project::userCanManage((int)$fresh['project_id'],current_user_id(),can('projects.manage.all'));
+                if(!$manager && (!$fresh || !can('tasks.update.assigned') || (int)$fresh['assigned_student_id']!==current_user_id() || self::locked($fresh) || self::isProjectExpired((int)$fresh['project_id']) || !self::canStudentTransition($fresh['status'],$status))){db()->rollBack();access_denied();}
+            }
             $stmt = db()->prepare('UPDATE project_tasks SET status=? WHERE id=? AND deleted_at IS NULL AND status<>?');
             $stmt->execute([$status,$taskId,$status]);
             return $stmt->rowCount() === 1;
-        });
+        }, false);
     }
 
     public static function gradeAndComplete(int $taskId, int $gradeResult, string $gradeComment): bool
@@ -113,13 +124,12 @@ final class Task
     }
 
     /** Solo el docente: actualiza nota y comentario sin cambiar el estado. */
-    public static function updateGrade(int $taskId, int $gradeResult, string $gradeComment): bool
+    public static function updateGrade(int $taskId,int $gradeResult,string $gradeComment): bool
     {
-        $stmt = db()->prepare(
-            'UPDATE project_tasks SET grade_result = ?, grade_comment = ? WHERE id = ? AND deleted_at IS NULL'
-        );
-        $stmt->execute([$gradeResult, $gradeComment !== '' ? $gradeComment : null, $taskId]);
-        return true;
+        $task=self::find($taskId);if(!$task)return false;
+        return self::mutate((int)$task['project_id'],static function()use($taskId,$gradeResult,$gradeComment):bool{
+            $q=db()->prepare('UPDATE project_tasks SET grade_result=?,grade_comment=? WHERE id=? AND deleted_at IS NULL');$q->execute([$gradeResult,$gradeComment!==''?$gradeComment:null,$taskId]);return $q->rowCount()>0;
+        });
     }
 
     public static function find(int $taskId): ?array
@@ -132,34 +142,15 @@ final class Task
 
     public static function forUser(int $userId): array
     {
-        $stmt = db()->prepare(
-            'SELECT t.*, CONCAT(u.first_name, " ", u.last_name) AS student_name,
-                    p.title AS project_title, p.id AS project_id
-             FROM project_tasks t
-             JOIN projects p ON p.id = t.project_id
-             LEFT JOIN users u ON u.id = t.assigned_student_id
-             WHERE t.assigned_student_id = ? AND t.deleted_at IS NULL AND p.deleted_at IS NULL
-             ORDER BY t.due_date IS NULL, t.due_date ASC, t.id DESC'
-        );
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll();
+        [$scope,$params]=Project::accessScope($userId);
+        $q=db()->prepare('SELECT t.*,p.title AS project_title FROM project_tasks t JOIN projects p ON p.id=t.project_id WHERE '.$scope.' AND t.assigned_student_id=? AND t.deleted_at IS NULL ORDER BY t.due_date IS NULL,t.due_date,t.id');
+        $q->execute(array_merge($params,[$userId]));return $q->fetchAll();
     }
-
     public static function countsForUser(int $userId): array
     {
-        $stmt = db()->prepare(
-            'SELECT t.status, COUNT(*) AS total
-             FROM project_tasks t
-             JOIN projects p ON p.id = t.project_id
-             WHERE t.assigned_student_id = ? AND t.deleted_at IS NULL AND p.deleted_at IS NULL
-             GROUP BY t.status'
-        );
-        $stmt->execute([$userId]);
-        $counts = ['todo' => 0, 'doing' => 0, 'review' => 0, 'done' => 0];
-        foreach ($stmt->fetchAll() as $row) {
-            $counts[$row['status']] = (int) $row['total'];
-        }
-        return $counts;
+        [$scope,$params]=Project::accessScope($userId);
+        $q=db()->prepare('SELECT t.status,COUNT(*) AS total FROM project_tasks t JOIN projects p ON p.id=t.project_id WHERE '.$scope.' AND t.assigned_student_id=? AND t.deleted_at IS NULL GROUP BY t.status');
+        $q->execute(array_merge($params,[$userId]));return array_merge(['todo'=>0,'doing'=>0,'review'=>0,'done'=>0],array_column($q->fetchAll(),'total','status'));
     }
 
     public static function deleteTask(int $taskId): void
@@ -173,7 +164,7 @@ final class Task
         });
     }
 
-    private static function mutate(int $projectId, callable $operation): bool
+    private static function mutate(int $projectId, callable $operation,bool $managerOnly=true): bool
     {
         $pdo = db();
         $ownsTransaction = !$pdo->inTransaction();
@@ -182,6 +173,9 @@ final class Task
             $lock = $pdo->prepare('SELECT id FROM projects WHERE id=? AND deleted_at IS NULL FOR UPDATE');
             $lock->execute([$projectId]);
             if (!$lock->fetchColumn()) throw new RuntimeException('Proyecto no disponible');
+            if(PHP_SAPI!=='cli' && (!Project::userCanAccess($projectId,current_user_id(),can('projects.manage.all')) || ($managerOnly && (!can('tasks.manage') || !Project::userCanManage($projectId,current_user_id(),can('projects.manage.all')))))) {
+                $pdo->rollBack();access_denied();
+            }
             $changed = $operation();
             if ($changed) ProjectMetrics::record($projectId);
             if ($ownsTransaction) $pdo->commit();

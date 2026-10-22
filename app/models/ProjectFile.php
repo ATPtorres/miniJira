@@ -87,6 +87,14 @@ final class ProjectFile
         return $stmt->fetchAll();
     }
 
+    public static function forComments(array $ids): array
+    {
+        $ids=array_map('intval',$ids);if(!$ids)return [];
+        $q=db()->prepare('SELECT * FROM project_files WHERE comment_id IN ('.implode(',',array_fill(0,count($ids),'?')).') AND deleted_at IS NULL ORDER BY created_at,id');$q->execute($ids);$result=[];
+        foreach($q->fetchAll() as $file)$result[(int)$file['comment_id']][]=$file;
+        return $result;
+    }
+
     public static function find(int $fileId, bool $includeDeleted = false): ?array
     {
         $stmt = db()->prepare('SELECT * FROM project_files WHERE id = ?' . ($includeDeleted ? '' : ' AND deleted_at IS NULL'));

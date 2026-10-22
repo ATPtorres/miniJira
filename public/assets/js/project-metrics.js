@@ -19,8 +19,26 @@
         .then(function (res) { if (!res.ok) throw new Error('Actualizacion no disponible'); return res.json(); })
         .then(function (data) { summaries.forEach(function (el) { if (el.innerHTML !== data.states_html) el.innerHTML = data.states_html; }); })
         .catch(function () {}));
+      const cards = Array.from(groups.entries()).filter(([, elements]) => !elements.some(el => el.dataset.liveProject)).slice(0, 25);
+      function updateElements(elements, data) {
+        elements.forEach(el => {
+          el.querySelectorAll('[data-live-value]').forEach(value => { value.textContent = data.metrics[value.dataset.liveValue]; });
+          el.querySelectorAll('[data-live-bar]').forEach(bar => { bar.style.width = data.metrics.progress + '%'; });
+          el.querySelectorAll('[data-live-status]').forEach(label => {
+            label.textContent = data.metrics.completed ? 'Completado' : (data.timeline.expired ? 'Vencido' : 'En progreso');
+          });
+        });
+      }
+      if (cards.length) jobs.push(fetch(window.APP.baseUrl + 'api/project-metrics.php?batch=1&ids=' + cards.map(([id]) => id).join(','), {credentials:'same-origin',cache:'no-store'})
+        .then(res => { if (!res.ok) throw new Error('Sin conexión'); return res.json(); })
+        .then(data => cards.forEach(([id, elements]) => {
+          const item = data.projects.find(p => String(p.id) === id);
+          if (item) updateElements(elements, item);
+          else elements.forEach(el => { el.textContent = 'Este proyecto ya no está disponible.'; });
+        })).catch(() => {}));
       groups.forEach(function (elements, id) {
         var chart = elements.find(function (el) { return el.dataset.liveProject; });
+        if (!chart) return;
         var query = new URLSearchParams({id: id});
         if (chart) { query.set('from', chart.dataset.from); query.set('to', chart.dataset.to); }
         jobs.push(fetch(window.APP.baseUrl + 'api/project-metrics.php?' + query, {credentials: 'same-origin', cache: 'no-store'})

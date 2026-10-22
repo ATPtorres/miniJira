@@ -75,6 +75,7 @@ require_once __DIR__ . '/models/User.php';
 require_once __DIR__ . '/models/PasswordResetToken.php';
 require_once __DIR__ . '/models/Permission.php';
 require_once __DIR__ . '/models/Project.php';
+require_once __DIR__ . '/models/Classroom.php';
 require_once __DIR__ . '/models/Task.php';
 require_once __DIR__ . '/models/AcademicPeriod.php';
 require_once __DIR__ . '/models/Career.php';
@@ -89,6 +90,7 @@ require_once __DIR__ . '/models/ProjectFile.php';
 require_once __DIR__ . '/models/ProjectComment.php';
 require_once __DIR__ . '/models/Notification.php';
 require_once __DIR__ . '/services/ProjectMetrics.php';
+require_once __DIR__ . '/services/Workload.php';
 require_once __DIR__ . '/services/ProjectCharts.php';
 require_once __DIR__ . '/services/ReminderService.php';
 require_once __DIR__ . '/services/ProjectReport.php';
@@ -107,6 +109,7 @@ require_once __DIR__ . '/controllers/PasswordResetController.php';
 require_once __DIR__ . '/controllers/AcademicController.php';
 require_once __DIR__ . '/controllers/FileController.php';
 require_once __DIR__ . '/controllers/CommentController.php';
+require_once __DIR__ . '/controllers/ClassroomController.php';
 
 /* ------------------------------------------------------------------ */
 /* Utilidades de URL (para vistas)                                     */

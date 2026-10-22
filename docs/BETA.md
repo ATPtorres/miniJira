@@ -1,5 +1,7 @@
 # MiniJira Beta codex
 
+Para la rama `pruebacritica`, consultar primero [clases, aislamiento y transición](PRUEBACRITICA.md). Las rutas de expediente académico anteriores ya no forman parte del flujo operativo.
+
 La rama `MiniJira-Beta-codex` incorpora notificaciones con actualizacion automatica,
 recordatorios programados, metricas compartidas, analitica y reportes PDF.
 

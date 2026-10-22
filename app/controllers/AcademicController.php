@@ -2,7 +2,7 @@
 declare(strict_types=1);
 final class AcademicController
 {
-    private static function guard(string $perm): void { requirePermission($perm); }
+    private static function guard(string $perm): void { access_denied(); }
 
     // ---- Periods ----
     public static function createPeriod(): void { self::guard('periods.manage'); requireCsrf();
@@ -145,6 +145,7 @@ final class AcademicController
         redirect('admin/academic.php?tab=enrollments&enrollment='.$eid);
     }
     public static function updateCourseStatus(): void {
+        self::guard('retired');
         // docente puede actualizar nota de sus asignaciones, admin todo
         requireCsrf();
         $id=(int)post('id'); $status=post('status'); $grade = post('grade') !== '' ? (float)post('grade') : null;

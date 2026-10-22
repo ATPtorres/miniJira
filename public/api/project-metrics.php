@@ -5,6 +5,14 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 if (!is_logged_in()) { http_response_code(401); echo json_encode(['error'=>'Sesion finalizada']); exit; }
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
+if(isset($_GET['batch'])){
+    try {
+        $raw=$_GET['ids']??'';
+        if(!is_string($raw) || !preg_match('/^[0-9]+(?:,[0-9]+){0,24}$/',$raw))throw new InvalidArgumentException('Lista no válida.');
+        echo json_encode(['projects'=>Project::progressBatch(explode(',',$raw),current_user_id(),can('projects.manage.all'))]);
+    }catch(InvalidArgumentException $e){http_response_code(400);echo json_encode(['error'=>$e->getMessage()]);}
+    exit;
+}
 if (isset($_GET['summary'])) {
     $metrics = ProjectMetrics::fromCounts(Project::summaryFor(current_user_id(),can('projects.manage.all')));
     echo json_encode(['metrics'=>$metrics,'states_html'=>ProjectCharts::states($metrics)]);

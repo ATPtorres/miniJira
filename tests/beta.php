@@ -11,7 +11,9 @@ $sql=preg_replace('/CREATE DATABASE IF NOT EXISTS sistema_universitario.*?;/s','
 $sql=str_replace('USE sistema_universitario;','',$sql);
 db()->exec($sql);
 require __DIR__ . '/../database/migrations/20261021_file_history.php';
+require __DIR__ . '/../database/migrate_classrooms.php';
 db()->exec('DELETE FROM projects');
+db()->exec('DELETE FROM classrooms');
 db()->exec('DELETE FROM users');
 $pass=0;$fail=0;
 function check(bool $ok,string $message='Comprobacion fallida'): void { if (!$ok) throw new RuntimeException($message); }
@@ -23,8 +25,11 @@ foreach(['admin','docente','estudiante','outsider','observer'] as $role) {
     $users[$role]=User::create(['first_name'=>$role==='docente'?'Álvaro':ucfirst($role),'last_name'=>'Beta','email'=>$role.'@beta.test','password_hash'=>password_hash('Beta.Test2026!',PASSWORD_DEFAULT),'role_code'=>in_array($role,['outsider','observer'],true)?'estudiante':$role]);
 }
 $student=$users['estudiante'];$teacher=$users['docente'];
+$users['teacher2']=User::create(['first_name'=>'Docente2','last_name'=>'Beta','email'=>'docente2@beta.test','password_hash'=>password_hash('Beta.Test2026!',PASSWORD_DEFAULT),'role_code'=>'docente']);
+$class=Classroom::save(null,['external_code'=>'QA-A','subject'=>'Programación','career'=>'Sistemas','semester_number'=>1,'group_name'=>'A','period'=>'2026-2','teacher_id'=>$teacher,'is_active'=>1],[$student,$users['observer']],$users['admin']);
+$classOther=Classroom::save(null,['external_code'=>'QA-B','subject'=>'Administración','career'=>'Administración','semester_number'=>3,'group_name'=>'B','period'=>'2026-2','teacher_id'=>$users['teacher2'],'is_active'=>1],[$student,$users['outsider']],$users['admin']);
 $start=date('Y-m-d');$end=date('Y-m-d',strtotime('+30 days'));
-$project=Project::create(['title'=>'Proyecto Beta de prueba','description'=>'Descripcion de prueba con acentos: investigación','objectives'=>'Validar avance y notificaciones','start_date'=>$start,'end_date'=>$end,'responsible_teacher_id'=>$teacher,'created_by_id'=>$teacher],[$student,$users['observer']]);
+$project=Project::create(['classroom_id'=>$class,'title'=>'Proyecto Beta de prueba','description'=>'Descripcion de prueba con acentos: investigación','objectives'=>'Validar avance y notificaciones','start_date'=>$start,'end_date'=>$end,'responsible_teacher_id'=>$teacher,'created_by_id'=>$teacher],[$student,$users['observer']]);
 function addTask(int $project,string $status='todo',?string $due=null): int {
     global $student;
     Task::create($project,['title'=>'Tarea Beta','description'=>'Prueba <script>alert(1)</script>','assigned_student_id'=>$student,'points'=>10,'priority'=>'medium','status'=>$status,'due_date'=>$due ?: date('Y-m-d',strtotime('+7 days'))]);
@@ -59,7 +64,7 @@ test('Fechas de filtro invalidas rechazadas',function(){try{ProjectMetrics::date
 test('Miembros y usuarios externos separados',function()use($project,$student,$users){check(Project::userCanAccess($project,$student));check(!Project::userCanAccess($project,$users['outsider']));});
 $_SESSION['user_id']=$teacher;$_SESSION['role_code']='docente';
 $tomorrow=date('Y-m-d',strtotime('+1 day'));
-$rproject=Project::create(['title'=>'Proyecto recordatorios','description'=>'Prueba recordatorios automaticos','objectives'=>'Evitar duplicados y ejecuciones simultaneas','start_date'=>$start,'end_date'=>$tomorrow,'responsible_teacher_id'=>$teacher,'created_by_id'=>$teacher],[$student]);
+$rproject=Project::create(['classroom_id'=>$class,'title'=>'Proyecto recordatorios','description'=>'Prueba recordatorios automaticos','objectives'=>'Evitar duplicados y ejecuciones simultaneas','start_date'=>$start,'end_date'=>$tomorrow,'responsible_teacher_id'=>$teacher,'created_by_id'=>$teacher],[$student]);
 $rtask=addTask($rproject,'todo',$tomorrow);
 addTask($rproject,'done',$tomorrow);addTask($rproject,'review',$tomorrow);$deleted=addTask($rproject,'todo',$tomorrow);Task::deleteTask($deleted);
 ProjectEvent::create(['project_id'=>$rproject,'title'=>'Hito de prueba','description'=>'Prueba','event_date'=>$tomorrow,'event_time'=>'10:00','event_type'=>'milestone','created_by_id'=>$teacher]);
@@ -82,6 +87,6 @@ test('Reporte genera PDF real con varias paginas',function()use($project){for($i
 // Restore a simple project for HTTP/browser tests; all fixtures remain in the dedicated test DB.
 foreach (db()->query('SELECT id FROM project_tasks WHERE project_id='.$project.' AND deleted_at IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $id) Task::deleteTask((int)$id);
 $t1=addTask($project);$t2=addTask($project);
-file_put_contents(sys_get_temp_dir().'/minijira-beta-fixtures.json',json_encode(['project'=>$project,'task'=>$t1,'student'=>$student,'teacher'=>$teacher,'outsider'=>$users['outsider']]));
+file_put_contents(sys_get_temp_dir().'/minijira-beta-fixtures.json',json_encode(['classroom'=>$class,'classroom_other'=>$classOther,'teacher2'=>$users['teacher2'],'admin'=>$users['admin'],'observer'=>$users['observer'],'project'=>$project,'task'=>$t1,'student'=>$student,'teacher'=>$teacher,'outsider'=>$users['outsider']]));
 echo "RESULT $pass passed, $fail failed\n";
 exit($fail ? 1 : 0);

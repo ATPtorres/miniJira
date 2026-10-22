@@ -38,6 +38,7 @@ final class ProjectEvent
 
     public static function create(array $data): int
     {
+        return Project::managedMutation((int)$data['project_id'],static function()use($data):int{
         $stmt = db()->prepare(
             'INSERT INTO project_events (project_id, title, description, event_date, event_time, event_type, created_by_id)
              VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -52,10 +53,13 @@ final class ProjectEvent
             $data['created_by_id'],
         ]);
         return (int) db()->lastInsertId();
+        });
     }
 
     public static function update(int $eventId, array $data): void
     {
+        $event=self::find($eventId);if(!$event)return;
+        Project::managedMutation((int)$event['project_id'],static function()use($eventId,$data):void{
         $stmt = db()->prepare(
             'UPDATE project_events SET title = ?, description = ?, event_date = ?, event_time = ?, event_type = ?
              WHERE id = ? AND deleted_at IS NULL'
@@ -68,11 +72,15 @@ final class ProjectEvent
             $data['event_type'] ?? 'custom',
             $eventId,
         ]);
+        });
     }
 
     public static function delete(int $eventId): void
     {
+        $event=self::find($eventId);if(!$event)return;
+        Project::managedMutation((int)$event['project_id'],static function()use($eventId):void{
         $stmt = db()->prepare('UPDATE project_events SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
         $stmt->execute([$eventId]);
+        });
     }
 }

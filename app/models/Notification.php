@@ -28,31 +28,39 @@ final class Notification
     /** Inserta una notificacion y retorna su ID. */
     public static function create(int $userId, string $type, string $title, string $message, ?string $link = null): int
     {
-        $stmt = db()->prepare(
-            'INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)'
-        );
-        $stmt->execute([$userId, $type, $title, $message, $link]);
-        return (int) db()->lastInsertId();
+        $projectId=self::projectFromLink($link);
+        if ($projectId!==null && !Project::userCanAccess($projectId,$userId,self::globalAccess($userId))) return 0;
+        $stmt=db()->prepare('INSERT INTO notifications(user_id,type,title,message,link,project_id) VALUES(?,?,?,?,?,?)');
+        $stmt->execute([$userId,$type,$title,$message,$link,$projectId]);return (int)db()->lastInsertId();
+    }
+    public static function projectFromLink(?string $link): ?int
+    {
+        if (!$link || !str_starts_with($link,'projects/')) return null;
+        parse_str((string)parse_url($link,PHP_URL_QUERY),$params);
+        $id=(int)($params['project_id']??$params['id']??0);
+        if ($id<=0 && isset($params['file_id'])) { $f=ProjectFile::find((int)$params['file_id'],true);$id=(int)($f['project_id']??0); }
+        $q=db()->prepare('SELECT id FROM projects WHERE id=?');$q->execute([$id]);return $q->fetchColumn()?(int)$id:null;
+    }
+    private static function globalAccess(int $uid): bool
+    {
+        $q=db()->prepare('SELECT COUNT(*) FROM users u JOIN role_permissions rp ON rp.role_id=u.role_id JOIN permissions p ON p.id=rp.permission_id WHERE u.id=? AND u.is_active=1 AND p.code="projects.manage.all"');$q->execute([$uid]);return (int)$q->fetchColumn()>0;
+    }
+    private static function visibleScope(int $uid): array
+    {
+        [$scope,$params]=Project::accessScope($uid,self::globalAccess($uid),'np');
+        return ['n.user_id=? AND ((n.project_id IS NULL AND (n.link IS NULL OR n.link NOT LIKE "projects/%")) OR EXISTS(SELECT 1 FROM projects np WHERE np.id=n.project_id AND '.$scope.'))',array_merge([$uid],$params)];
     }
 
     /** Retorna las ultimas N notificaciones de un usuario. */
     public static function forUser(int $userId, int $limit = 20): array
     {
-        $stmt = db()->prepare(
-            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?'
-        );
-        $stmt->execute([$userId, $limit]);
-        return $stmt->fetchAll();
+        [$scope,$params]=self::visibleScope($userId);
+        $stmt=db()->prepare('SELECT n.* FROM notifications n WHERE '.$scope.' ORDER BY n.created_at DESC,n.id DESC LIMIT '.max(1,min(100,$limit)));
+        $stmt->execute($params);return $stmt->fetchAll();
     }
-
-    /** Conteo de notificaciones no leidas. */
     public static function unreadCount(int $userId): int
     {
-        $stmt = db()->prepare(
-            'SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0'
-        );
-        $stmt->execute([$userId]);
-        return (int) $stmt->fetchColumn();
+        [$scope,$params]=self::visibleScope($userId);$q=db()->prepare('SELECT COUNT(*) FROM notifications n WHERE '.$scope.' AND n.is_read=0');$q->execute($params);return (int)$q->fetchColumn();
     }
 
     /** Marca una notificacion como leida (solo si pertenece al usuario). */
@@ -85,8 +93,8 @@ final class Notification
     /** Retorna todas las notificaciones de un usuario con paginacion. */
     public static function paginated(int $userId, int $page = 1, int $perPage = 15, ?string $typeFilter = null, ?string $readFilter = null): array
     {
-        $where = 'WHERE user_id = ?';
-        $params = [$userId];
+        [$scope,$params]=self::visibleScope($userId);
+        $where='WHERE '.$scope;
 
         if ($typeFilter !== null && $typeFilter !== '') {
             $where .= ' AND type = ?';
@@ -98,7 +106,7 @@ final class Notification
             $where .= ' AND is_read = 0';
         }
 
-        $countStmt = db()->prepare('SELECT COUNT(*) FROM notifications ' . $where);
+        $countStmt = db()->prepare('SELECT COUNT(*) FROM notifications n ' . $where);
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
@@ -107,7 +115,7 @@ final class Notification
         $params[] = $offset;
 
         $stmt = db()->prepare(
-            'SELECT * FROM notifications ' . $where . ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?'
+            'SELECT * FROM notifications n ' . $where . ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?'
         );
         $stmt->execute($params);
 
@@ -152,8 +160,9 @@ final class Notification
         foreach ($data['items'] as &$item) $item['url'] = notification_url($item['link']);
         unset($item);
         // Include changes outside the five-item dropdown, including deletions/read state.
-        $stmt = db()->prepare('SELECT id,is_read FROM notifications WHERE user_id=? ORDER BY id');
-        $stmt->execute([$userId]);
+        [$scope,$params]=self::visibleScope($userId);
+        $stmt = db()->prepare('SELECT n.id,n.is_read FROM notifications n WHERE '.$scope.' ORDER BY n.id');
+        $stmt->execute($params);
         $hash = hash_init('sha256');
         foreach ($stmt as $row) hash_update($hash, $row['id'] . ':' . $row['is_read'] . ';');
         $data['version'] = hash_final($hash);

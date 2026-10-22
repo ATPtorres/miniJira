@@ -23,7 +23,7 @@ $saludo = $hour < 12 ? 'Buenos dias' : ($hour < 19 ? 'Buenas tardes' : 'Buenas n
 
 $maxCount = (int) max(1, ...array_map(static fn (array $r): int => (int) $r['total'], $counts));
 
-$projects = Project::accessibleTo(current_user_id(), can('projects.manage.all'));
+$projects = Project::accessibleTo(current_user_id(), can('projects.manage.all'),25);
 $projectSummary = ProjectMetrics::fromCounts(Project::summaryFor(current_user_id(), can('projects.manage.all')));
 
 // Iconos SVG
@@ -51,7 +51,7 @@ $pageTitle = 'Panel de Administracion';
   </div>
   <div class="dash-hero-actions">
     <a class="btn btn-light" href="<?= e(base_url('admin/users.php')) ?>">Gestionar usuarios</a>
-    <a class="btn btn-outline" href="<?= e(base_url('admin/academic.php')) ?>">Gestion academica</a>
+    <a class="btn btn-outline" href="<?= e(base_url('admin/classes.php')) ?>">Clases y participantes</a>
     <?php if (can('roles.manage')): ?>
     <a class="btn btn-outline" href="<?= e(base_url('admin/roles.php')) ?>">Roles y permisos</a>
     <?php endif; ?>
@@ -76,7 +76,7 @@ $pageTitle = 'Panel de Administracion';
     <h2 class="section-title">Gestion del sistema</h2>
     <section class="cards">
       <a class="card card-link" href="<?= e(base_url('admin/users.php')) ?>">
-        <h2>Gestionar docentes</h2>
+        <h2>Cuentas de docentes</h2>
         <p>Crear, editar, asignar rol y dar de baja (CRUD).</p>
         <span class="btn btn-sm btn-outline-dark">Abrir</span>
       </a>
@@ -87,13 +87,13 @@ $pageTitle = 'Panel de Administracion';
         <span class="btn btn-sm btn-outline-dark">Abrir</span>
       </a>
       <?php endif; ?>
-      <a class="card card-link" href="<?= e(base_url('admin/academic.php')) ?>">
-        <h2>Gestion academica</h2>
-        <p>Carreras, planes, materias, grupos, asignaciones y matriculas.</p>
+      <a class="card card-link" href="<?= e(base_url('admin/classes.php')) ?>">
+        <h2>Clases y participantes</h2>
+        <p>Contexto de las clases y listas autorizadas de participantes.</p>
         <span class="btn btn-sm btn-outline-dark">Abrir</span>
       </a>
       <a class="card card-link" href="<?= e(base_url('admin/users.php')) ?>">
-        <h2>Gestionar estudiantes</h2>
+        <h2>Cuentas de estudiantes</h2>
         <p>Crear, editar, asignar rol y dar de baja (CRUD).</p>
         <span class="btn btn-sm btn-outline-dark">Abrir</span>
       </a>

@@ -1,6 +1,6 @@
 <?php
 $isMine = (int) $comment['author_id'] === current_user_id();
-$attachments = ProjectFile::forComment((int) $comment['id']);
+$attachments = $threadAttachments[(int)$comment['id']] ?? [];
 ?>
 <div class="comment-head">
   <span class="comment-author">

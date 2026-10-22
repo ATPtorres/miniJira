@@ -13,6 +13,10 @@ final class ProjectReport
         $metrics=ProjectMetrics::forProject($projectId);
         $students=ProjectMetrics::students($projectId);
         $tasks=Task::forProject($projectId);
+        if(!Project::userCanManage($projectId,current_user_id(),can('projects.manage.all'))) {
+            $students=array_values(array_filter($students,fn($s)=>(int)$s['id']===current_user_id()));
+            $tasks=array_values(array_filter($tasks,fn($t)=>(int)$t['assigned_student_id']===current_user_id()));
+        }
         ob_start();
         require APP_PATH.'/app/views/reports/project.php';
         $html=ob_get_clean();

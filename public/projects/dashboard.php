@@ -165,7 +165,7 @@ $pageTitle = 'Panel · ' . $project['title'];
       <?php else: ?>
         <ul class="task-list">
           <?php foreach ($statusTasks as $task):
-            $locked = Task::isLocked((int) $task['id']) && !$canManage;
+            $locked = Task::locked($task) && !$canManage;
           ?>
           <li class="task-item<?= $locked ? ' task-item-locked' : '' ?>" style="padding:10px 12px">
             <div class="task-main">

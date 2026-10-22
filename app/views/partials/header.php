@@ -65,8 +65,8 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
             <a href="<?= e(base_url('user/change-password.php')) ?>">Cambiar contrasena</a>
           </li>
           <?php endif; ?>
-          <?php if (can('academic.view')): ?>
-          <li><a href="<?= e(base_url(can('admin.access') ? 'admin/academic.php' : 'user/academic.php')) ?>">Academico</a></li>
+          <?php if (can('user.access') || can('classes.manage')): ?>
+          <li><a href="<?= e(base_url(can('classes.manage') ? 'admin/classes.php' : 'user/classes.php')) ?>">Clases</a></li>
           <?php endif; ?>
           <li><a href="<?= e(base_url('projects/analytics.php')) ?>">Analitica</a></li>
           <li class="nav-notif-wrapper">

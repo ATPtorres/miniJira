@@ -54,7 +54,7 @@ $pageTitle = 'Tablero · ' . $project['title'];
 <?php foreach ($columns as $status => $label): ?>
   <section class="kanban-column status-<?= $status ?>" data-status="<?= $status ?>"><h2><?= $label ?><span><?= count($grouped[$status]) ?></span></h2><div class="kanban-tasks">
   <?php foreach ($grouped[$status] as $task): ?>
-    <?php $locked = Task::isLocked((int) $task['id']); ?>
+    <?php $locked = Task::locked($task); ?>
     <?php $isAssignedTask = can('tasks.update.assigned') && (int) $task['assigned_student_id'] === current_user_id(); ?>
     <?php $lockedForUser = $locked && !$canManage; ?>
     <?php $canMoveTask = $canManage || (!$locked && $isAssignedTask); ?>

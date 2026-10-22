@@ -1,5 +1,6 @@
 <?php
 /** $threadComments, $commentTaskId, $commentUrl y $canManage provienen de la página. */
+$threadAttachments=ProjectFile::forComments(array_column($threadComments,'id'));
 $roots = [];
 $replies = [];
 foreach ($threadComments as $entry) {

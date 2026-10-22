@@ -38,7 +38,7 @@ final class ProjectController
     public static function update(int $projectId): void
     {
         self::requireProjectManager($projectId);
-        if (Task::isProjectExpired($projectId)) {
+        if (Task::isProjectExpired($projectId) && !(can('projects.manage.all') && Project::find($projectId)['classroom_id']===null)) {
             flash_set('error', 'El proyecto ha vencido. No se pueden editar.');
             redirect('projects/board.php?id=' . $projectId);
         }
@@ -160,6 +160,7 @@ final class ProjectController
         }
         $ajax = post('ajax') === '1';
         requireCsrf();
+        if (!Project::userCanAccess($projectId,current_user_id(),can('projects.manage.all'))) access_denied();
         $task = Task::find((int) post('task_id'));
         $status = post('status');
         if ($task === null || (int) $task['project_id'] !== $projectId || !in_array($status, Task::STATUSES, true)) {
@@ -479,13 +480,20 @@ final class ProjectController
             'objectives' => post('objectives'),
             'start_date' => post('start_date'),
             'end_date' => post('end_date'),
-            'responsible_teacher_id' => current_user_id(),
+            'classroom_id' => (int) post('classroom_id'),
         ];
+        $class=Classroom::find($data['classroom_id']);
+        $data['responsible_teacher_id']=(int)($class['teacher_id']??0);
         $rawStudents = $_POST['student_ids'] ?? [];
         $studentIds = is_array($rawStudents)
             ? array_values(array_unique(array_filter(array_map('intval', $rawStudents), static fn (int $id): bool => $id > 0)))
             : [];
         $errors = [];
+        if (!$class || !(int)$class['is_active'] || !Classroom::canAccess($data['classroom_id'],current_user_id(),can('projects.manage.all'))
+            || (!can('projects.manage.all') && (int)$class['teacher_id']!==current_user_id())) $errors['classroom_id']='Selecciona una clase activa que tengas a cargo.';
+        $existing=(int)post('project_id')>0?Project::find((int)post('project_id')):null;
+        if ($existing && $existing['classroom_id']!==null && (int)$existing['classroom_id']!==$data['classroom_id']) $errors['classroom_id']='No se puede mover un proyecto entre clases.';
+        $eligible=$class?Classroom::studentIds((int)$class['id']):[];
         foreach ([['title', 'Titulo', 3, 150], ['description', 'Descripcion', 10, 5000], ['objectives', 'Objetivos', 10, 5000]] as [$key, $label, $min, $max]) {
             $error = validate_length($data[$key], $label, $min, $max);
             if ($error !== '') {
@@ -504,8 +512,8 @@ final class ProjectController
             $errors['student_ids'] = 'Debes asignar al menos un estudiante al proyecto.';
         } else {
             foreach ($studentIds as $studentId) {
-                if (!User::isActiveWithRole($studentId, 'estudiante')) {
-                    $errors['student_ids'] = 'Solo se pueden asignar estudiantes activos.';
+                if (!in_array($studentId,$eligible,true)) {
+                    $errors['student_ids'] = 'Solo se pueden asignar participantes activos de esta clase.';
                     break;
                 }
             }

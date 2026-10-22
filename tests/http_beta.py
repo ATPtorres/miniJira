@@ -3,6 +3,7 @@ import os, json, time, re, subprocess, signal, tempfile, pathlib, shutil, urllib
 from uploads import run_upload_checks
 from comments import run_comment_checks
 from file_history import run_file_history_checks
+from isolation import run_isolation_checks
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 PHP=os.environ.get('PHP_BIN','php')
 ENV=os.environ.copy()
@@ -60,6 +61,7 @@ try:
     require(json.loads(outsider.req('api/project-metrics.php?summary=1')[1])['metrics']['total']==0,'analytics summary excludes other users projects')
     require(student.req('api/notifications.php',{'action':'mark-all-read'})[0]==419,'notification mutations require CSRF')
     project=FX['project']; task=FX['task']
+    run_isolation_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT, stream_event)
     run_upload_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
     run_comment_checks(BASE, FX, student, teacher, admin, observer, outsider, php, require, ROOT)
     run_file_history_checks(BASE, FX, student, teacher, observer, outsider, php, require, ROOT)

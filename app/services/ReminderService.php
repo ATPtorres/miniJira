@@ -49,11 +49,13 @@ final class ReminderService
     {
         $stmt=db()->prepare('SELECT u.id FROM users u WHERE u.is_active=1 AND (u.id=(SELECT responsible_teacher_id FROM projects WHERE id=?) OR EXISTS(SELECT 1 FROM project_students ps WHERE ps.project_id=? AND ps.student_id=u.id))');
         $stmt->execute([$projectId,$projectId]);
-        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_values(array_filter(array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN)),fn($id)=>Project::userCanAccess($projectId,$id)));
     }
 
     private static function deliver(string $key,int $uid,string $type,string $title,string $message,string $link): bool
     {
+        $projectId=Notification::projectFromLink($link);
+        if ($projectId===null || !Project::userCanAccess($projectId,$uid)) return false;
         $pdo=db();
         $pdo->beginTransaction();
         try {

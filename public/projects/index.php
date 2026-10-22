@@ -11,8 +11,12 @@ $isDocente = $roleCode === 'docente';
 $isEstudiante = $roleCode === 'estudiante';
 $allProjects = can('projects.manage.all');
 
-$projects = Project::accessibleTo((int) $me['id'], $allProjects);
-$summary = Project::summaryFor((int) $me['id'], $allProjects);
+try{$filters=Workload::filters($_GET);}catch(InvalidArgumentException $e){http_response_code(400);exit('Filtros no válidos.');}
+$options=Workload::options((int)$me['id'],$allProjects,$filters);
+$summary=Project::summaryFor((int)$me['id'],$allProjects,$filters);
+$pages=max(1,(int)ceil($summary['projects']/25));$page=max(1,min((int)($_GET['page']??1),$pages));
+$projects=Project::accessibleTo((int)$me['id'],$allProjects,25,($page-1)*25,$filters);
+$filterReset='projects/index.php';$showStatus=false;
 $canCreate = $isDocente && can('projects.create');
 $pageTitle = 'Proyectos';
 ?>
@@ -26,6 +30,7 @@ $pageTitle = 'Proyectos';
   <?php if ($canCreate): ?><div class="dash-hero-actions"><a class="btn btn-light" href="<?= e(base_url('projects/form.php')) ?>">Crear proyecto</a></div><?php endif; ?>
 </section>
 
+<?php require APP_PATH.'/app/views/partials/workload-filters.php'; ?>
 <?php if ($projects !== []): ?>
 <section class="cards project-indicators">
   <article class="card stat-card"><div><div class="stat-value"><?= $summary['projects'] ?></div><p class="stat-label">Proyectos activos</p></div></article>
@@ -94,4 +99,5 @@ $pageTitle = 'Proyectos';
   </section>
 <?php endif; ?>
 
+<nav aria-label="Páginas de proyectos"><?php if($page>1):?><a href="?<?=e(http_build_query(array_merge($filters,['page'=>$page-1])))?>">Anterior</a><?php endif;?> Página <?=$page?> de <?=$pages?> <?php if($page<$pages):?><a href="?<?=e(http_build_query(array_merge($filters,['page'=>$page+1])))?>">Siguiente</a><?php endif;?></nav>
 <?php require APP_PATH . '/app/views/partials/footer.php'; ?>
