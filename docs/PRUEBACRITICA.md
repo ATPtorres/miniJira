@@ -127,3 +127,30 @@ versiones y descargas. También se ejecutan las regresiones Beta y el cron real.
 
 Ejecutar `php database/populate_demo.php` para crear un conjunto pequeño de datos.
 Ver [cuentas, contraseña y escenarios demo](DEMO.md). No reinicia datos existentes.
+
+## ULAT-29: reportes consolidados
+
+La opción **Reportes** del menú abre `projects/reports.php`. Genera un reporte
+actual de varios proyectos, filtrable por período, carrera, materia, semestre,
+grupo, ID de clase y estudiante. El docente consulta sus proyectos; el estudiante
+consulta exclusivamente sus tareas, aunque manipule el filtro de estudiante;
+el supervisor con permiso global consulta el conjunto autorizado completo.
+
+Muestra avance general y por proyecto, tareas vencidas y desempeño individual
+consolidado (proyectos, tareas terminadas, evaluadas, puntos y porcentaje).
+El avance global se calcula sobre tareas, no promediando porcentajes de proyectos.
+El desempeño usa únicamente puntos posibles de tareas evaluadas; sin evaluaciones
+se muestra «Sin evaluación». Un filtro individual restringe también el avance a
+las tareas de ese estudiante. No se reconstruyen estados históricos.
+El botón **Descargar PDF** exporta el mismo conjunto filtrado, con las mismas
+reglas de acceso, sin recursos externos. Requiere las dependencias Composer
+existentes. No requiere cambios en la base de datos.
+
+Prueba de integración de solo lectura sobre el poblado demo sin modificaciones,
+con el servidor iniciado y `pdftotext` disponible:
+
+```bash
+python3 tests/reports_demo.py
+```
+
+Puede configurarse `REPORT_TEST_URL` para indicar otra URL del servidor.
