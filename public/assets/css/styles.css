@@ -2105,3 +2105,45 @@ tbody tr:hover { background: var(--gold-pale); }
 .analytics-filters label { display: grid; gap: 8px; }
 .live-analytics h3 { margin-top: 24px; }
 .live-analytics details table { width: 100%; }
+
+/* Movimiento discreto: navegación nativa, sin interceptar enlaces ni formularios. */
+@keyframes page-arrive {
+  from { opacity: .35; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes page-leave {
+  to { opacity: 0; }
+}
+@keyframes surface-arrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Entrada también disponible en navegadores sin View Transitions. */
+  .main { animation: page-arrive 200ms ease-out; }
+  .modal-overlay:not([hidden]) .modal-dialog,
+  .notif-dropdown.is-open { animation: surface-arrive 160ms ease-out; }
+  .progress-bar { transition: width 240ms ease-out; }
+  .btn { transition: background-color 150ms ease, border-color 150ms ease,
+    color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+}
+@supports (view-transition-name: none) {
+  @view-transition { navigation: auto; }
+  @media (prefers-reduced-motion: no-preference) {
+    /* La cabecera permanece estable mientras cambia el contenido. */
+    .main { view-transition-name: page-content; animation: none; }
+    ::view-transition-group(root) { animation: none; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+    ::view-transition-old(page-content) { animation: page-leave 100ms ease-out both; }
+    ::view-transition-new(page-content) { animation: page-arrive 200ms ease-out both; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
