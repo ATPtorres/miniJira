@@ -6,7 +6,7 @@ final class ProjectCharts
 {
     public static function states(array $metrics): string
     {
-        $colors = ['todo'=>'#65748b','doing'=>'#2874a6','review'=>'#ad7900','done'=>'#22764d'];
+        $colors = ['todo'=>'var(--chart-todo, #65748b)','doing'=>'var(--chart-doing, #2874a6)','review'=>'var(--chart-review, #ad7900)','done'=>'var(--chart-done, #22764d)'];
         $html = '<div class="chart-bars" aria-label="Distribucion de tareas">';
         foreach (ProjectMetrics::LABELS as $status => $label) {
             $value = (int) $metrics[$status];

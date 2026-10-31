@@ -1,0 +1,98 @@
+/* Optional theme: brand backgrounds stay navy; text and surfaces use separate tokens. */
+:root { color-scheme: light; }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--gray-400);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--heading);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.theme-toggle[hidden] { display: none; }
+.theme-toggle:hover { border-color: var(--gold-dark); }
+.theme-toggle[aria-pressed="true"] { border-color: var(--gold); }
+.site-header .theme-toggle { background: transparent; color: #fff; border-color: rgba(255,255,255,.45); }
+.site-header .theme-toggle:hover, .site-header .theme-toggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.guest-tools { display: flex; justify-content: flex-end; padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) {
+  .theme-toggle { transition: border-color 150ms ease, color 150ms ease; }
+}
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --heading: #c7d9fa;
+    --info-solid: #28548a;
+    --success-solid: #20643f;
+    --error-solid: #a52d3c;
+    --muted-solid: #465874;
+    --chart-todo: #a0aec4;
+    --chart-doing: #98c6ff;
+    --chart-review: #f5c65b;
+    --chart-done: #7ee2aa;
+    --white: #192438;
+    --off-white: #101827;
+    --gray-50: #24334a;
+    --gray-100: #223047;
+    --gray-200: #3b4c65;
+    --gray-400: #a0aec4;
+    --gray-600: #b7c4d7;
+    --gray-700: #ced8e7;
+    --gray-800: #e4eaf3;
+    --gold-pale: #352e1d;
+    --gold-dark: #f5c65b;
+    --success: #7ee2aa;
+    --success-bg: #173b2d;
+    --error: #ffaaaa;
+    --error-bg: #47282f;
+    --info: #98c6ff;
+    --info-bg: #233b5b;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.18);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.23);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.3);
+  }
+  :root[data-theme="dark"] :is(input, select, textarea) {
+    background-color: var(--off-white);
+    color: var(--gray-800);
+    border-color: var(--gray-200);
+    accent-color: var(--gold);
+  }
+  :root[data-theme="dark"] input::placeholder,
+  :root[data-theme="dark"] textarea::placeholder { color: var(--gray-400); opacity: 1; }
+  :root[data-theme="dark"] :is(input, select, textarea):focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+    border-color: var(--gold);
+    box-shadow: none;
+  }
+  :root[data-theme="dark"] input.is-invalid { border-color: var(--error); }
+  :root[data-theme="dark"] :is(.confirmation-dialog, .notif-dropdown) { background: var(--white); }
+  :root[data-theme="dark"] .alert-success { border-color: #36684b; }
+  :root[data-theme="dark"] .alert-error { border-color: #87515b; }
+  :root[data-theme="dark"] .alert-info { border-color: #466a91; }
+  :root[data-theme="dark"] :is(.status-pending, .priority-badge.priority-high) { background: var(--gold-pale); color: var(--gold-dark); }
+  :root[data-theme="dark"] :is(.priority-high, .priority-med, .task-due.due-urgent) { color: var(--gold-dark); }
+  :root[data-theme="dark"] .priority-urgent { color: var(--error); }
+  :root[data-theme="dark"] .cat-format { background: #382951; color: #d9bdff; }
+  :root[data-theme="dark"] .task-file-link:hover { background: #324e72; }
+  :root[data-theme="dark"] .calendar-day.today { background: var(--info-bg); }
+  :root[data-theme="dark"] .kanban-column.drag-over { border-color: var(--info); background: var(--info-bg); box-shadow: inset 0 0 0 2px var(--info); }
+  :root[data-theme="dark"] :is(.progress-bar, .bar-fill) { background: linear-gradient(90deg, #6e9ee0, #98c6ff); }
+  :root[data-theme="dark"] .history-chart text { fill: var(--gray-600); }
+  :root[data-theme="dark"] .history-chart path { stroke: var(--gray-200); }
+  :root[data-theme="dark"] .history-chart polyline { stroke: var(--info); }
+  :root[data-theme="dark"] .history-chart circle { fill: var(--info); }
+  :root[data-theme="dark"] .event-dot.dot-custom { background: var(--muted-solid); }
+  :root[data-theme="dark"] .task-grade { background: var(--success-solid); }
+  :root[data-theme="dark"] .btn-outline-dark:is(:hover, :focus-visible) { border-color: var(--info); background: var(--info-bg); }
+}
+@media print {
+  .theme-toggle, .guest-tools { display: none !important; }
+}

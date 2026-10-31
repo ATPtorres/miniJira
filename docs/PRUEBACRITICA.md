@@ -154,3 +154,31 @@ python3 tests/reports_demo.py
 ```
 
 Puede configurarse `REPORT_TEST_URL` para indicar otra URL del servidor.
+
+## Tema oscuro opcional
+
+El botón **Tema oscuro** aparece en el menú superior (dentro del menú móvil)
+y en las pantallas públicas de acceso. Es un interruptor: pulsarlo otra vez
+restaura el tema claro. El tema claro sigue siendo el predeterminado.
+
+La preferencia se guarda en el navegador mediante `localStorage` y se aplica
+antes de cargar los estilos para evitar un destello claro al navegar. Se
+sincroniza entre pestañas del mismo origen y se conserva al cerrar sesión.
+No necesita migraciones ni cambios en cuentas. Si el navegador bloquea el
+almacenamiento, el interruptor funciona en la página actual; sin JavaScript
+se mantiene el tema claro y se oculta el botón.
+
+La paleta cubre formularios, tablas, comentarios, calendario, tableros,
+notificaciones y gráficos, con colores separados para textos y fondos de estado.
+La impresión y los PDF conservan su presentación clara. El interruptor admite
+teclado, informa su estado con `aria-pressed` y respeta movimiento reducido.
+
+Prueba de navegador de solo lectura con el servidor iniciado y cuentas demo:
+
+```bash
+python3 tests/theme_browser.py
+```
+
+Requiere Python con Playwright y Chromium. Se puede indicar `THEME_TEST_URL`,
+`CHROMIUM_BIN`, `THEME_TEST_EMAIL` y `THEME_TEST_PASSWORD`. Por defecto usa la
+cuenta docente demo de Ana y `http://127.0.0.1:8080/`.

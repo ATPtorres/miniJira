@@ -112,10 +112,10 @@ $pageTitle = 'Panel · ' . $project['title'];
     <h2 class="section-title">Distribucion de tareas</h2>
     <section class="card">
       <div class="kanban-summary" style="margin:0">
-        <span style="background:var(--gray-600);color:#fff">TO DO <?= $todoCount ?></span>
-        <span style="background:var(--info);color:#fff">DOING <?= $doingCount ?></span>
+        <span style="background:var(--muted-solid);color:#fff">TO DO <?= $todoCount ?></span>
+        <span style="background:var(--info-solid);color:#fff">DOING <?= $doingCount ?></span>
         <span style="background:var(--gold);color:var(--navy)">IN REVIEW <?= $reviewCount ?></span>
-        <span style="background:var(--success);color:#fff">DONE <?= $doneCount ?></span>
+        <span style="background:var(--success-solid);color:#fff">DONE <?= $doneCount ?></span>
       </div>
     </section>
 
