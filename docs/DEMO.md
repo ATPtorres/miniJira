@@ -71,3 +71,26 @@ consultar su proyecto. Las otras seis están activas.
 
 Total inicial: **13 cuentas, 7 clases, 7 proyectos, 28 tareas y 21 archivos/versiones**.
 Los archivos son TXT sintéticos; no contienen información de personas reales.
+
+## Poblado adicional multicarrera
+
+```bat
+C:\xampp\php\php.exe database\populate_demo.php --extended
+```
+
+Añade 2 docentes, 4 estudiantes, 10 clases, 10 proyectos y 40 tareas.
+Puede repetirse sin duplicar registros ni sobrescribir los datos existentes.
+Todas las cuentas nuevas usan `Clave.2026!` y el dominio `@demo.minijira.test`:
+
+- `elena`: 5 clases, 3 materias y 3 carreras.
+- `ricardo`: 5 clases, 3 materias y 3 carreras.
+- `natalia`: 7 clases y 5 materias en Sistemas y Administración; Programación II
+  y Gestión empresarial incluyen grupos A y B para la misma estudiante.
+- `andres`: 6 clases y 5 materias en Sistemas e Industrial; Costos industriales
+  incluye grupos A y B.
+- `paula`: 6 clases y 4 materias en tres carreras.
+- `mateo`: 4 clases y 4 materias en Sistemas y Administración.
+
+Las carreras representan contextos de las clases para probar el aislamiento;
+no constituyen matrículas institucionales ni una gestión formal de doble titulación.
+Los proyectos incluyen entregables, comentarios y calificaciones sintéticas.

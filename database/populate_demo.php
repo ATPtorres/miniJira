@@ -32,6 +32,8 @@ $classes=[
     ['ARCHIVO-SIS','Introducción a sistemas','Ingeniería de Sistemas',1,'Histórico','Archivo '.((int)date('Y')-1),'carlos',['alejandro','pedro'],false],
 ];
 
+if (in_array('--extended', $argv, true)) require __DIR__.'/demo_multicarrera.php';
+
 function demoId(string $sql,array $params): ?int
 {
     $q=db()->prepare($sql);$q->execute($params);$id=$q->fetchColumn();return $id===false?null:(int)$id;
