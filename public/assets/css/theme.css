@@ -28,7 +28,7 @@
 @media screen {
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --heading: #c7d9fa;
+    --heading: #ffffff;
     --info-solid: #28548a;
     --success-solid: #20643f;
     --error-solid: #a52d3c;
@@ -92,6 +92,40 @@
   :root[data-theme="dark"] .event-dot.dot-custom { background: var(--muted-solid); }
   :root[data-theme="dark"] .task-grade { background: var(--success-solid); }
   :root[data-theme="dark"] .btn-outline-dark:is(:hover, :focus-visible) { border-color: var(--info); background: var(--info-bg); }
+  :root[data-theme="dark"] :is(
+    h1, h2, h3, h4, h5, h6,
+    .section-title,
+    .card h1, .card h2, .card h3, .card h4,
+    .panel-head h1,
+    .auth-card h1,
+    .stat-value,
+    .project-head h2,
+    .kanban-column h2,
+    .kanban-task h3,
+    .progress-label
+  ) {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+  :root[data-theme="dark"] .progress-row a {
+    color: #ffffff;
+    font-weight: 700;
+  }
+  :root[data-theme="dark"] .progress-row a:is(:hover, :focus-visible) {
+    color: var(--gold);
+    text-decoration: underline;
+  }
+  :root[data-theme="dark"] :is(
+    .project-info-grid strong,
+    .project-meta strong,
+    .form-group label,
+    .permission-fieldset legend,
+    .permission-option strong,
+    .role-card-heading strong
+  ) {
+    color: #ffffff;
+    font-weight: 700;
+  }
 }
 @media print {
   .theme-toggle, .guest-tools { display: none !important; }
