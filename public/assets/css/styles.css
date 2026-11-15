@@ -2155,7 +2155,7 @@ tbody tr:hover { background: var(--gold-pale); }
 }
 
 /* Reportes: tablas en escritorio/impresión y fichas con etiquetas en móvil. */
-.report-content { min-width: 0; }
+.report-content { min-width: 0; overflow-wrap: anywhere; }
 .report-content h1 { font-size: clamp(1.35rem, 3vw, 2rem); }
 .report-content h2 { margin-top: 24px; }
 .report-table { table-layout: fixed; }
@@ -2214,3 +2214,11 @@ a.event-dot:hover { color: #fff; text-decoration: underline; }
 @media print {
   .report-filter-panel, .report-actions { display: none !important; }
 }
+
+.report-class-help { flex-basis: 100%; margin: 0; font-size: .85rem; }
+.report-filters select[name="classroom_id"] {
+  width: 100%; min-height: 40px; padding: 8px 10px; font: inherit;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  background: var(--white); color: var(--gray-800);
+}
+.report-filters > .report-class-filter { flex: 1 1 100%; }

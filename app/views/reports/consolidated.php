@@ -3,7 +3,7 @@
 <?php foreach(Workload::FIELDS as $key=>$label): if($data['filters'][$key]!==''): ?><p><?= e($label) ?>: <?= e($data['filters'][$key]) ?></p><?php endif; endforeach; ?>
 <p><?= count($data['projects']) ?> proyectos · <?= $data['total']['done'] ?> / <?= $data['total']['total'] ?> tareas terminadas · Avance: <?= $data['total']['progress'] ?>%</p>
 <p>El avance cuenta todas las tareas con el mismo peso. Desempeño = puntos obtenidos / puntos posibles de tareas evaluadas; las pendientes no se consideran cero. Vencidas: tareas sin terminar con fecha anterior a hoy.</p>
-<?php if($data['filters']['classroom_id']!==''): ?><p>Clase: <?= e($data['filters']['classroom_id']) ?></p><?php endif; ?>
+<?php if($data['filters']['classroom_id']!==''): ?><p>Clase: <?= e($data['classroomLabel']) ?></p><?php endif; ?>
 <?php if($data['student']!==''): ?><p>Alcance individual: solo tareas del estudiante seleccionado.</p><?php endif; ?>
 <h2 id="report-projects-title">Avance por proyecto</h2>
 <table class="report-table" role="table" aria-labelledby="report-projects-title">

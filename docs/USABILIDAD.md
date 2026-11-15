@@ -14,6 +14,23 @@ visible y exporta los resultados de los filtros **aplicados**, no los cambios
 que aún no se hayan enviado. El PDF no muestra las etiquetas exclusivas de las
 fichas móviles. No cambian los cálculos ni las reglas de acceso.
 
+### Seleccionar una clase
+
+El filtro «Clase» permite elegir por materia, grupo, período, carrera, semestre y
+docente, sin conocer identificadores numéricos. La lista solo incluye clases con
+proyectos autorizados para la persona que consulta el reporte. Los demás filtros
+aplicados acotan las opciones; «Todas las clases» elimina la selección individual.
+El nombre completo aparece también en el resumen y en el PDF. Las clases inactivas
+siguen disponibles para supervisores con permiso global, identificadas como tales.
+Si una clase deja de estar disponible o no coincide con los filtros, se conserva
+la selección con un aviso genérico y no se expone su nombre ni información ajena.
+
+Prueba de selección, filtros por contexto, descarga y aislamiento por rol:
+
+```bash
+python3 tests/report_class_browser.py
+```
+
 ## Portada y ayuda
 
 La portada describe tareas, entregas, calificaciones y reportes por clases

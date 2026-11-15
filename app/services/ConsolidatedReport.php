@@ -5,6 +5,9 @@ final class ConsolidatedReport
     public static function build(array $input): array
     {
         $filters=Workload::filters($input);
+        $classrooms=self::classrooms($filters);
+        $selectedClass=$classrooms[(int)$filters['classroom_id']]??null;
+        $classroomLabel=$selectedClass ? self::classroomLabel($selectedClass) : 'Clase no disponible con estos filtros';
         $uid=current_user_id(); $admin=can('projects.manage.all');
         [$scope,$params]=Project::accessScope($uid,$admin);
         [$filter,$more]=Workload::classFilter($filters);
@@ -42,7 +45,28 @@ final class ConsolidatedReport
         foreach($projects as &$row) self::finish($row);unset($row);
         foreach($students as &$row) self::finish($row);unset($row);
         self::finish($total);
-        return compact('filters','student','projects','students','total','own');
+        return compact('filters','student','projects','students','total','own','classrooms','classroomLabel');
+    }
+    /** Class names are exposed only for projects covered by the report's access policy. */
+    private static function classrooms(array $filters): array
+    {
+        [$scope,$params]=Project::accessScope(current_user_id(),can('projects.manage.all'));
+        // The selected class must remain changeable; other applied context filters narrow the list.
+        $filters['classroom_id']='';
+        [$filter,$more]=Workload::classFilter($filters);
+        $q=db()->prepare('SELECT c.id,c.subject,c.career,c.semester_number,c.group_name,c.period,c.is_active,
+            CONCAT(u.first_name," ",u.last_name) AS teacher_name
+            FROM classrooms c JOIN users u ON u.id=c.teacher_id
+            WHERE EXISTS(SELECT 1 FROM projects p WHERE p.classroom_id=c.id AND '.$scope.')'.$filter.'
+            ORDER BY c.period DESC,c.career,c.subject,c.semester_number,c.group_name,u.first_name,u.last_name,c.id');
+        $q->execute(array_merge($params,$more));
+        return array_column($q->fetchAll(),null,'id');
+    }
+    public static function classroomLabel(array $class): string
+    {
+        return $class['subject'].' · Grupo '.$class['group_name'].' · '.$class['period'].' · '.$class['career']
+            .' · Semestre '.$class['semester_number'].' · '.$class['teacher_name']
+            .((int)$class['is_active']===1?'':' (inactiva)');
     }
     private static function emptyCounts(): array {return ['total'=>0,'done'=>0,'graded'=>0,'earned'=>0,'graded_points'=>0,'overdue'=>0];}
     private static function add(array &$a,array $r): void {

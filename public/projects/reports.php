@@ -25,7 +25,16 @@ $options=Workload::options(current_user_id(),can('projects.manage.all'),$data['f
 <summary>Filtros del reporte</summary>
 <form method="get" class="card analytics-filters report-filters">
 <?php foreach(Workload::FIELDS as $key=>$label): ?><label><?= e($label) ?><select name="<?= e($key) ?>"><option value="">Todos</option><?php foreach($options[$key] as $value): ?><option value="<?= e((string)$value) ?>" <?= (string)$value===$data['filters'][$key]?'selected':'' ?>><?= e((string)$value) ?></option><?php endforeach; ?></select></label><?php endforeach; ?>
-<label>Clase (ID)<input type="number" min="1" name="classroom_id" value="<?= e($data['filters']['classroom_id']) ?>"></label>
+<label class="report-class-filter">Clase<select name="classroom_id" aria-describedby="report-class-help">
+  <option value="">Todas las clases</option>
+  <?php if($data['filters']['classroom_id']!=='' && !isset($data['classrooms'][(int)$data['filters']['classroom_id']])): ?>
+    <option value="<?= e($data['filters']['classroom_id']) ?>" selected>Clase no disponible con estos filtros</option>
+  <?php endif; ?>
+  <?php foreach($data['classrooms'] as $class): ?>
+    <option value="<?= (int)$class['id'] ?>" <?= (int)$class['id']===(int)$data['filters']['classroom_id']?'selected':'' ?>><?= e(ConsolidatedReport::classroomLabel($class)) ?></option>
+  <?php endforeach; ?>
+</select></label>
+<p class="report-class-help text-muted" id="report-class-help">Se muestran las clases con proyectos a los que tienes acceso. Aplica los filtros de período, carrera o materia para acotar la lista.</p>
 <?php if(!$data['own']): ?><label>Estudiante<select name="student_id"><option value="">Todos</option><?php foreach($studentOptions as $s): ?><option value="<?= $s['id'] ?>" <?= (string)$s['id']===(string)$data['student']?'selected':'' ?>><?= e($s['name']) ?></option><?php endforeach; ?></select></label><?php endif; ?>
 <button class="btn btn-primary">Aplicar filtros</button>
 </form></details>
