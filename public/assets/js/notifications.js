@@ -20,6 +20,20 @@
         dropdown.classList.remove('is-open'); bell.setAttribute('aria-expanded', 'false');
       }
     });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && dropdown.classList.contains('is-open') && !document.querySelector('dialog[open]')) {
+        event.stopPropagation();
+        dropdown.classList.remove('is-open');
+        bell.setAttribute('aria-expanded', 'false');
+        bell.focus();
+      }
+    }, true);
+    document.addEventListener('focusin', function (event) {
+      if (!dropdown.contains(event.target) && !bell.contains(event.target)) {
+        dropdown.classList.remove('is-open');
+        bell.setAttribute('aria-expanded', 'false');
+      }
+    });
     function pause() { clearTimeout(timer); if (stream) { stream.close(); stream = null; } }
     function expired() { stopped = true; pause(); }
     function check(res) {

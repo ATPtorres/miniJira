@@ -99,7 +99,7 @@ $pageTitle = 'Calendario · ' . $project['title'];
   <a class="btn btn-outline-dark btn-sm" href="<?= e(base_url('projects/calendar.php?id=' . $projectId . '&month=' . $nextMonth)) ?>">Siguiente &raquo;</a>
   <a class="btn btn-outline-dark btn-sm" href="<?= e(base_url('projects/calendar.php?id=' . $projectId)) ?>">Hoy</a>
   <?php if ($canManage): ?>
-    <button type="button" class="btn btn-primary btn-sm btn-new-event" data-default-date="<?= e($defaultEventDate) ?>">+ Nuevo evento</button>
+    <button type="button" class="btn btn-primary btn-sm btn-new-event" aria-haspopup="dialog" aria-controls="event-modal" data-default-date="<?= e($defaultEventDate) ?>">+ Nuevo evento</button>
   <?php endif; ?>
 </div>
 
@@ -110,7 +110,7 @@ $pageTitle = 'Calendario · ' . $project['title'];
   <span class="legend-item"><span class="dot dot-custom"></span> Personalizado</span>
   <span class="legend-item"><span class="dot dot-project-start"></span> Inicio proyecto</span>
   <span class="legend-item"><span class="dot dot-project-end"></span> Fin proyecto</span>
-  <?php if ($canManage): ?><span class="legend-item legend-hint">Haz clic en un dia para crear un evento</span><?php endif; ?>
+  <?php if ($canManage): ?><span class="legend-item legend-hint">Selecciona el día para crear un evento</span><?php endif; ?>
 </section>
 
 <?php if ($errors !== []): ?>
@@ -148,15 +148,17 @@ $pageTitle = 'Calendario · ' . $project['title'];
           if ($canManage && $inRange) $classes[] = 'day-clickable';
           ?>
           <div class="<?= implode(' ', $classes) ?>" data-date="<?= $dateStr ?>">
-            <div class="day-number"><?= $day ?></div>
+            <?php if ($canManage && $inRange): ?>
+              <button type="button" class="day-number calendar-create" aria-label="Crear evento el <?= e(date('d/m/Y', strtotime($dateStr))) ?>" aria-haspopup="dialog" aria-controls="event-modal"><?= $day ?></button>
+            <?php else: ?><div class="day-number"><?= $day ?></div><?php endif; ?>
             <div class="day-events">
               <?php if ($isProjectStart): ?><span class="event-dot dot-project-start" title="Inicio del proyecto"></span><?php endif; ?>
               <?php if ($isProjectEnd): ?><span class="event-dot dot-project-end" title="Fin del proyecto"></span><?php endif; ?>
               <?php foreach ($dayTasks as $task): ?>
-                <span class="event-dot dot-task task-due" data-due="<?= e($task['due_date'] . 'T23:59:59') ?>" title="Tarea: <?= e($task['title']) ?> — <?= e($task['priority'] ?? 'medium') ?>"><?= e(mb_substr($task['title'], 0, 8)) ?></span>
+                <a href="<?= e(base_url('projects/task.php?project_id='.$projectId.'&task_id='.$task['id'])) ?>" aria-label="Abrir tarea: <?= e($task['title']) ?>" class="event-dot dot-task task-due" data-due="<?= e($task['due_date'] . 'T23:59:59') ?>" title="Tarea: <?= e($task['title']) ?> — <?= e($task['priority'] ?? 'medium') ?>"><?= e(mb_substr($task['title'], 0, 8)) ?></a>
               <?php endforeach; ?>
               <?php foreach ($dayEvents as $evt): ?>
-                <span class="event-dot dot-<?= e($evt['event_type']) ?>"<?= calendar_event_attrs($evt) ?> title="<?= e($evt['title']) ?>"><?= e(mb_substr($evt['title'], 0, 8)) ?></span>
+                <button type="button" class="event-dot dot-<?= e($evt['event_type']) ?>" aria-label="<?= $canManage ? 'Editar evento: ' : 'Ver evento: ' ?><?= e($evt['title']) ?>" aria-haspopup="dialog" aria-controls="event-modal"<?= calendar_event_attrs($evt) ?> title="<?= e($evt['title']) ?>"><?= e(mb_substr($evt['title'], 0, 8)) ?></button>
               <?php endforeach; ?>
             </div>
           </div>
@@ -173,7 +175,7 @@ $pageTitle = 'Calendario · ' . $project['title'];
   <div class="events-section-head">
     <h2>Eventos de <?= e($monthNames[$month] ?? '') ?> (<?= count($events) ?>)</h2>
     <?php if ($canManage): ?>
-      <button type="button" class="btn btn-sm btn-primary btn-new-event" data-default-date="<?= e($defaultEventDate) ?>">+ Nuevo evento</button>
+      <button type="button" class="btn btn-sm btn-primary btn-new-event" aria-haspopup="dialog" aria-controls="event-modal" data-default-date="<?= e($defaultEventDate) ?>">+ Nuevo evento</button>
     <?php endif; ?>
   </div>
   <?php if ($events === []): ?>
@@ -210,8 +212,8 @@ $pageTitle = 'Calendario · ' . $project['title'];
 </section>
 
 <!-- Modal de eventos: crear / editar (gestores) o ver (estudiantes) -->
-<div id="event-modal" class="modal-overlay" hidden>
-  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+<dialog id="event-modal" class="modal-overlay" aria-labelledby="event-modal-title" hidden>
+  <div class="modal-dialog">
     <div class="modal-head">
       <h3 id="event-modal-title">Evento</h3>
       <button type="button" class="modal-close" aria-label="Cerrar">&times;</button>
@@ -267,6 +269,6 @@ $pageTitle = 'Calendario · ' . $project['title'];
       <?php endif; ?>
     </div>
   </div>
-</div>
+</dialog>
 
 <?php require APP_PATH . '/app/views/partials/footer.php'; ?>

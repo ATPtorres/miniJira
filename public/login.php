@@ -56,7 +56,7 @@ clear_old_input();
 
   <div class="auth-footer-links">
     <p class="text-center"><a href="<?= e(base_url('forgot-password.php')) ?>">Olvidaste tu contrasena?</a></p>
-    <p class="text-center text-muted">Si no tienes cuenta, contacta al administrador del sistema.</p>
+    <p class="text-center text-muted">¿Necesitas acceso o ayuda? <a href="<?= e(base_url('help.php#contacto')) ?>">Consulta los canales de soporte</a>.</p>
   </div>
 </div>
 

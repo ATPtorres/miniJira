@@ -16,6 +16,10 @@ if (!defined('APP_PATH')) {
   <footer class="site-footer">
     <div class="container">
       <p class="footer-brand"><?= e(config('app.name')) ?></p>
+      <nav class="footer-links" aria-label="Ayuda e información">
+        <a href="<?= e(base_url('help.php')) ?>">Ayuda y soporte</a>
+        <a href="<?= e(base_url('privacy.php')) ?>">Privacidad</a>
+      </nav>
       <p>&copy; <?= date('Y') ?> <?= e(config('app.name')) ?>. Todos los derechos reservados.</p>
     </div>
   </footer>

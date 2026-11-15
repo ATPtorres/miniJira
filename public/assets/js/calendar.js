@@ -1,24 +1,5 @@
 /** Calendario del proyecto: tooltips y modal de eventos (crear / editar / ver). */
 document.addEventListener('DOMContentLoaded', () => {
-  // Tooltips personalizados (evita el doble tooltip nativo del atributo title)
-  document.querySelectorAll('.event-dot[title]').forEach(el => {
-    const text = el.getAttribute('title');
-    el.setAttribute('data-tip', text);
-    el.removeAttribute('title');
-    el.addEventListener('mouseenter', () => {
-      const tip = document.createElement('div');
-      tip.className = 'calendar-tooltip';
-      tip.textContent = el.getAttribute('data-tip') || '';
-      document.body.appendChild(tip);
-      const rect = el.getBoundingClientRect();
-      tip.style.left = rect.left + 'px';
-      tip.style.top = rect.top - tip.offsetHeight - 4 + 'px';
-    });
-    el.addEventListener('mouseleave', () => {
-      document.querySelectorAll('.calendar-tooltip').forEach(t => t.remove());
-    });
-  });
-
   const modal = document.getElementById('event-modal');
   if (!modal) return;
 
@@ -35,15 +16,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const fTime = document.getElementById('event-time-input');
   const fDesc = document.getElementById('event-desc-input');
 
+  let opener = null;
+  let previousOverflow = '';
   function openModal() {
+    opener = document.activeElement;
+    previousOverflow = document.body.style.overflow;
     modal.hidden = false;
+    modal.showModal(); // The native dialog makes the background inert.
     document.body.style.overflow = 'hidden';
   }
 
-  function closeModal() {
+  function closeModal() { modal.close(); }
+  modal.addEventListener('close', () => {
     modal.hidden = true;
-    document.body.style.overflow = '';
-  }
+    document.body.style.overflow = previousOverflow;
+    if (opener && opener.isConnected) opener.focus();
+  });
+
+  // Keep Tab inside the dialog, including when the browser would focus its own chrome.
+  modal.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(modal.querySelectorAll(
+      'button, a[href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter(el => !el.matches(':disabled') && el.getClientRects().length > 0);
+    if (!controls.length) return;
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  });
 
   function dataFrom(el) {
     return {
@@ -127,9 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
   modal.addEventListener('click', e => {
     if (e.target === modal) closeModal();
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !modal.hidden) closeModal();
-  });
+  // Escape is handled by the native dialog and follows the same close path.
 
   // Eliminar desde el modal (solo gestores)
   if (btnDelete) {
@@ -153,7 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (e.target.closest('.event-dot')) return;
       const day = e.target.closest('.calendar-day.day-clickable[data-date]');
-      if (day) openCreate(day.getAttribute('data-date'));
+      if (day) {
+        day.querySelector('.calendar-create').focus();
+        openCreate(day.getAttribute('data-date'));
+      }
     });
   }
 

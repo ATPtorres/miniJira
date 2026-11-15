@@ -28,7 +28,7 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= e($pageTitle) ?> · <?= $appName ?></title>
-  <meta name="description" content="Portal institucional del Sistema Universitario: acceso para estudiantes, docentes y administracion.">
+  <meta name="description" content="MiniJira: tareas por clase, entrega de archivos, evaluación y reportes de avance.">
   <script src="<?= e(asset('js/theme.js')) ?>"></script>
   <link rel="stylesheet" href="<?= e(asset('css/styles.css')) ?>">
   <link rel="stylesheet" href="<?= e(asset('css/theme.css')) ?>">
@@ -40,7 +40,7 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
   </script>
 </head>
 <body>
-  <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+  <a class="skip-link" href="#contenido" data-skip-link>Saltar al contenido principal</a>
 
   <?php if ($currentUser !== null): ?>
   <header class="site-header">
@@ -49,11 +49,11 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
         <span class="brand-mark" aria-hidden="true"><?= $brandInitial ?></span>
         <?= $appName ?>
       </a>
-      <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" data-nav-toggle>
+      <button class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" data-nav-toggle aria-controls="main-nav-list">
         <span></span><span></span><span></span>
       </button>
       <nav aria-label="Navegacion principal">
-        <ul class="nav-list" data-nav-list>
+        <ul class="nav-list" id="main-nav-list" data-nav-list>
           <li>
             <a href="<?= e(base_url(can('admin.access') ? 'admin/dashboard.php' : 'user/dashboard.php')) ?>">Mi panel</a>
           </li>
@@ -74,7 +74,7 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
           <li><a href="<?= e(base_url('projects/reports.php')) ?>">Reportes</a></li>
           <li><?php require APP_PATH.'/app/views/partials/theme-toggle.php'; ?></li>
           <li class="nav-notif-wrapper">
-            <button type="button" class="nav-bell" aria-label="Notificaciones" id="notif-bell">
+            <button type="button" class="nav-bell" aria-label="Notificaciones" aria-controls="notif-dropdown" aria-expanded="false" id="notif-bell">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <?php if ($notifCount > 0): ?>
               <span class="nav-bell-badge" id="notif-badge"><?= $notifCount > 99 ? '99+' : $notifCount ?></span>
@@ -138,5 +138,5 @@ $brandInitial = mb_substr(trim(strip_tags($appName)), 0, 1, 'UTF-8');
     </div>
   </dialog>
 
-  <main id="contenido" class="container main">
+  <main id="contenido" class="container main" tabindex="-1">
     <?= flash_display() ?>

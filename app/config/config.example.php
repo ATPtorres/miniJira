@@ -58,6 +58,12 @@ return [
         'transport' => 'auto', // auto | sse | poll
     ],
 
+    // Contacto institucional visible en Ayuda y Privacidad. Vacío: orientación presencial.
+    // También puede configurarse sin editar config.php mediante SISTEMA_SUPPORT_EMAIL.
+    'support' => [
+        'email' => getenv('SISTEMA_SUPPORT_EMAIL') ?: '',
+    ],
+
     'mail' => [
         // driver = log para desarrollo local; smtp envia correos reales.
         'driver'       => 'log',

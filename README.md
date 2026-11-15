@@ -7,6 +7,8 @@ La rama `pruebacritica` incorpora clases y participantes autorizados, aislamient
 La rama Beta agrega notificaciones con actualizacion automatica, Cron de recordatorios,
 analitica real e informes PDF. Ver [instalacion, ejecucion y pruebas de Beta](docs/BETA.md).
 
+La rama `BetaJiraFinal` incorpora reportes adaptados a móvil, una portada centrada en tareas y entregas, y páginas públicas de ayuda y privacidad. Ver [uso, contacto de soporte y navegación por teclado](docs/USABILIDAD.md).
+
 Para Beta, ejecutar `composer install` y `php database/migrate_beta.php` antes de iniciar.
 
 ---

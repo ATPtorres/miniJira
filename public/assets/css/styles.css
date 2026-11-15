@@ -41,6 +41,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { font-size: 100%; }
 body {
   margin: 0;
@@ -2151,4 +2152,65 @@ tbody tr:hover { background: var(--gold-pale); }
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Reportes: tablas en escritorio/impresión y fichas con etiquetas en móvil. */
+.report-content { min-width: 0; }
+.report-content h1 { font-size: clamp(1.35rem, 3vw, 2rem); }
+.report-content h2 { margin-top: 24px; }
+.report-table { table-layout: fixed; }
+.report-table th, .report-table td { overflow-wrap: anywhere; }
+.report-table tbody th { color: var(--heading); font-weight: 600; }
+.report-table:first-of-type thead th:first-child { width: 46%; }
+.report-context { display: block; font-size: .84em; font-weight: 400; color: var(--gray-600); }
+.report-cell-label { display: none; }
+.report-filters > label { min-width: 0; max-width: 100%; }
+.report-filters input, .report-filters select { min-width: 0; max-width: 100%; }
+@media screen and (max-width: 700px) {
+  .report-filters { align-items: stretch; }
+  .report-filters > label { flex: 1 1 100%; }
+  .report-filters input, .report-filters select { width: 100%; min-height: 40px; }
+  .report-filters .btn { width: 100%; }
+  .report-table, .report-table tbody { display: block; width: 100%; }
+  .report-table thead {
+    position: absolute; width: 1px; height: 1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .report-table tr {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    margin-bottom: 14px; overflow: hidden;
+  }
+  .report-table tbody th { display: block; grid-column: 1 / -1; background: var(--gray-100); }
+  .report-table td { display: block; padding: 12px; border: 0; }
+  .report-cell-label { display: block; font-size: .78rem; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+}
+/* Public help and privacy share the app's surfaces and palette. */
+.footer-links, .help-topics { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 24px; }
+.footer-links { margin: 10px 0; }
+.footer-links a { color: #fff; text-decoration: underline; }
+.footer-links a:hover { color: var(--gold); }
+.help-topics { justify-content: flex-start; margin: 0 0 24px; }
+.help-topics a { padding: 8px 0; text-decoration: underline; }
+.help-section { margin-bottom: 20px; overflow-wrap: anywhere; scroll-margin-top: 160px; }
+.help-section h2:not(:first-child) { margin-top: 28px; }
+.help-section li { margin: 8px 0; }
+.help-section a, .auth-footer-links a { text-decoration: underline; }
+/* Native dialog supplies keyboard focus containment and an inert backdrop. */
+dialog.modal-overlay {
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  margin: 0; border: 0; background: transparent; color: var(--gray-800);
+}
+dialog.modal-overlay:not([open]) { display: none; }
+dialog.modal-overlay::backdrop { background: rgba(15,23,42,.6); }
+.calendar-create { border: 1px solid var(--gray-200); border-radius: 4px; background: var(--white); padding: 3px 6px; cursor: pointer; font: inherit; min-width: 28px; }
+button.event-dot { border: 0; width: 100%; text-align: left; font-family: inherit; cursor: pointer; }
+a.event-dot:hover { color: #fff; text-decoration: underline; }
+.calendar-create:hover { border-color: var(--gold); }
+:target { scroll-margin-top: 160px; }
+.report-filter-panel { margin-bottom: 20px; }
+.report-filter-panel summary { cursor: pointer; padding: 12px 0; font-weight: 600; color: var(--heading); }
+.report-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+@media print {
+  .report-filter-panel, .report-actions { display: none !important; }
 }
