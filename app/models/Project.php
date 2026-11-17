@@ -29,7 +29,7 @@ final class Project
             (SELECT COUNT(*) FROM project_students ps WHERE ps.project_id=p.id) AS student_count,
             COALESCE(t.todo_count,0) AS todo_count,COALESCE(t.doing_count,0) AS doing_count,COALESCE(t.review_count,0) AS review_count,COALESCE(t.done_count,0) AS done_count
             FROM projects p JOIN users u ON u.id=p.responsible_teacher_id LEFT JOIN classrooms c ON c.id=p.classroom_id
-            LEFT JOIN (SELECT project_id,COUNT(*) FILTER (WHERE status='todo') AS todo_count,COUNT(*) FILTER (WHERE status='doing') AS doing_count,COUNT(*) FILTER (WHERE status='review') AS review_count,COUNT(*) FILTER (WHERE status='done') AS done_count FROM project_tasks WHERE deleted_at IS NULL GROUP BY project_id) t ON t.project_id=p.id
+            LEFT JOIN (SELECT project_id,COUNT(*) FILTER (WHERE status=$$todo$$) AS todo_count,COUNT(*) FILTER (WHERE status=$$doing$$) AS doing_count,COUNT(*) FILTER (WHERE status=$$review$$) AS review_count,COUNT(*) FILTER (WHERE status=$$done$$) AS done_count FROM project_tasks WHERE deleted_at IS NULL GROUP BY project_id) t ON t.project_id=p.id
             WHERE '.$scope.$filter.' ORDER BY p.end_date,p.id';
         if ($limit!==null) $sql.=' LIMIT '.max(1,min(1000,$limit)).' OFFSET '.max(0,$offset);
         $q=db()->prepare($sql);$q->execute(array_merge($params,$filterParams));return $q->fetchAll();
@@ -140,7 +140,7 @@ final class Project
         [$scope,$params]=self::accessScope($userId,$allProjects);
         [$filter,$fparams]=Workload::classFilter($filters,'c');
         $q=db()->prepare('SELECT COUNT(*) AS projects,COALESCE(SUM(t.todo),0) AS todo,COALESCE(SUM(t.doing),0) AS doing,COALESCE(SUM(t.review),0) AS review,COALESCE(SUM(t.done),0) AS done
-            FROM projects p LEFT JOIN classrooms c ON c.id=p.classroom_id LEFT JOIN (SELECT project_id,COUNT(*) FILTER (WHERE status='todo') AS todo,COUNT(*) FILTER (WHERE status='doing') AS doing,COUNT(*) FILTER (WHERE status='review') AS review,COUNT(*) FILTER (WHERE status='done') AS done FROM project_tasks WHERE deleted_at IS NULL GROUP BY project_id) t ON t.project_id=p.id WHERE '.$scope.$filter);
+            FROM projects p LEFT JOIN classrooms c ON c.id=p.classroom_id LEFT JOIN (SELECT project_id,COUNT(*) FILTER (WHERE status=$$todo$$) AS todo,COUNT(*) FILTER (WHERE status=$$doing$$) AS doing,COUNT(*) FILTER (WHERE status=$$review$$) AS review,COUNT(*) FILTER (WHERE status=$$done$$) AS done FROM project_tasks WHERE deleted_at IS NULL GROUP BY project_id) t ON t.project_id=p.id WHERE '.$scope.$filter);
         $q->execute(array_merge($params,$fparams));return array_map('intval',$q->fetch());
     }
     public static function progressBatch(array $ids,int $uid,bool $admin): array
@@ -148,7 +148,7 @@ final class Project
         $ids=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));
         if(!$ids || count($ids)>25)throw new InvalidArgumentException('Máximo 25 proyectos por consulta.');
         [$scope,$params]=self::accessScope($uid,$admin);$marks=implode(',',array_fill(0,count($ids),'?'));
-        $q=db()->prepare('SELECT p.id,p.start_date,p.end_date,COUNT(t.id) FILTER (WHERE t.status='todo') AS todo,COUNT(t.id) FILTER (WHERE t.status='doing') AS doing,COUNT(t.id) FILTER (WHERE t.status='review') AS review,COUNT(t.id) FILTER (WHERE t.status='done') AS done FROM projects p LEFT JOIN project_tasks t ON t.project_id=p.id AND t.deleted_at IS NULL WHERE '.$scope.' AND p.id IN ('.$marks.') GROUP BY p.id');
+        $q=db()->prepare('SELECT p.id,p.start_date,p.end_date,COUNT(t.id) FILTER (WHERE t.status=$$todo$$) AS todo,COUNT(t.id) FILTER (WHERE t.status=$$doing$$) AS doing,COUNT(t.id) FILTER (WHERE t.status=$$review$$) AS review,COUNT(t.id) FILTER (WHERE t.status=$$done$$) AS done FROM projects p LEFT JOIN project_tasks t ON t.project_id=p.id AND t.deleted_at IS NULL WHERE '.$scope.' AND p.id IN ('.$marks.') GROUP BY p.id');
         $q->execute(array_merge($params,$ids));$out=[];
         foreach($q->fetchAll() as $row)$out[]=['id'=>(int)$row['id'],'metrics'=>ProjectMetrics::fromCounts($row),'timeline'=>ProjectMetrics::timeline($row)];
         return $out;
