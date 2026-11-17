@@ -1,5 +1,7 @@
 # MiniJira — tareas y entregas
 
+> **Despliegue:** el proyecto incluye Dockerfile y Blueprint para Render Free. Consulta [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) antes de publicar: se requiere una base MySQL externa y almacenamiento persistente externo para archivos.
+
 Plataforma de tareas universitarias estilo JIRA, construida en **PHP 8.x + MySQL/MariaDB (XAMPP)** sin frameworks.
 
 La rama `pruebacritica` incorpora clases y participantes autorizados, aislamiento académico y un panel de carga de trabajo. La universidad conserva su plataforma de inscripciones y gestión oficial de docentes. Ver [alcance, migración y uso de pruebacritica](docs/PRUEBACRITICA.md).
