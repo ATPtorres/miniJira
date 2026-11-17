@@ -3,9 +3,9 @@
     "description": "Sistema universitario PHP con notificaciones, analitica y reportes",
     "type": "project",
     "require": {
-        "php": "^8.0",
+        "php": "^8.2",
         "ext-pdo": "*",
-        "ext-pdo_mysql": "*",
+        "ext-pdo_pgsql": "*",
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-dom": "*",
