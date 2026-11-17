@@ -37,14 +37,14 @@ final class PasswordResetToken
         try {
             // Invalida tokens previos sin usar del mismo usuario.
             $pdo->prepare(
-                'UPDATE password_reset_tokens SET used_at = NOW()
+                'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP
                  WHERE user_id = ? AND used_at IS NULL'
             )->execute([$userId]);
 
             // La expiracion se calcula con el reloj del servidor MySQL.
             $pdo->prepare(
                 'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-                 VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))'
+                 VALUES (?, ?, (CURRENT_TIMESTAMP + (? * INTERVAL '1 minute')))'
             )->execute([$userId, $tokenHash, $ttlMinutes]);
 
             $pdo->commit();
@@ -63,7 +63,7 @@ final class PasswordResetToken
             'SELECT * FROM password_reset_tokens
              WHERE token_hash = ?
                AND used_at IS NULL
-               AND expires_at > NOW()
+               AND expires_at > CURRENT_TIMESTAMP
              ORDER BY id DESC
              LIMIT 1'
         );
@@ -75,7 +75,7 @@ final class PasswordResetToken
 
     public static function markUsed(int $id): void
     {
-        $stmt = db()->prepare('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?');
+        $stmt = db()->prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?');
         $stmt->execute([$id]);
     }
 }
