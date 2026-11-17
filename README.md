@@ -23,19 +23,19 @@ Para Beta, ejecutar `composer install` y `php database/migrate_beta.php` antes d
 
 ## 2. Instalación rápida
 
-### Opción A: Script único (recomendado)
+### Instalar PostgreSQL
+
+Crea una base de datos vacía y configura las variables `SISTEMA_DB_HOST`, `SISTEMA_DB_PORT`, `SISTEMA_DB_DATABASE`, `SISTEMA_DB_USERNAME` y `SISTEMA_DB_PASSWORD`. Después ejecuta:
 
 ```bash
-# Desde la raíz del proyecto:
-C:\xampp\mysql\bin\mysql.exe -u root < database\install.sql
+php database/postgresql/migrate.php
 ```
 
-O desde phpMyAdmin: pestaña SQL → pegar contenido de `database\install.sql` → Ejecutar.
+Para desplegar en Render, sigue [la guía específica](docs/DEPLOY_RENDER_POSTGRESQL.md).
 
-### Opción B: Archivos separados
+### Importar datos MySQL existentes
 
-1. Importar `database\schema.sql` (crea tablas)
-2. Importar `database\seed.sql` (datos iniciales)
+Con PHP local que tenga habilitadas `pdo_mysql` y `pdo_pgsql`, ejecuta `php database/postgresql/import_mysql.php` con las variables `SISTEMA_MYSQL_*` y `SISTEMA_DB_*` configuradas.
 
 ### Crear usuarios de desarrollo
 
