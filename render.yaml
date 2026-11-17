@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: minijira
+    runtime: docker
+    plan: free
+    branch: BetaJiraFinal
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health.php
+    autoDeploy: true
+    envVars:
+      - key: SISTEMA_APP_URL
+        sync: false
+      - key: SISTEMA_APP_SECRET
+        generateValue: true
+      - key: SISTEMA_ENCRYPTION_KEY
+        generateValue: true
+      - key: SISTEMA_EMAIL_LOOKUP_KEY
+        generateValue: true
+      - key: SISTEMA_DB_HOST
+        sync: false
+      - key: SISTEMA_DB_PORT
+        value: "3306"
+      - key: SISTEMA_DB_DATABASE
+        sync: false
+      - key: SISTEMA_DB_USERNAME
+        sync: false
+      - key: SISTEMA_DB_PASSWORD
+        sync: false
+      - key: SISTEMA_DB_SSL_CA
+        sync: false
+      - key: SISTEMA_TIMEZONE
+        value: America/La_Paz
