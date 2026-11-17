@@ -62,7 +62,7 @@ final class ReminderService
             $stmt=$pdo->prepare('INSERT INTO notification_deliveries(dedupe_key,user_id) VALUES(?,?)');
             try { $stmt->execute([$key,$uid]); }
             catch (PDOException $e) {
-                if (($e->errorInfo[1] ?? 0) !== 1062) throw $e;
+                if (($e->errorInfo[0] ?? $e->getCode()) !== '23505') throw $e;
                 $pdo->rollBack();
                 return false;
             }
