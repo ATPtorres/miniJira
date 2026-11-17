@@ -473,6 +473,9 @@ CREATE INDEX IF NOT EXISTS idx_notif_type ON notifications (type);
 CREATE INDEX IF NOT EXISTS idx_progress_project_time ON project_progress_history (project_id, recorded_at, id);
 CREATE INDEX IF NOT EXISTS idx_progress_project_time ON project_progress_history (project_id, recorded_at, id);
 
+-- Advance the explicit roles identity sequence after seeding IDs 1..3.
+SELECT setval(pg_get_serial_sequence('roles','id'), GREATEST(COALESCE((SELECT MAX(id) FROM roles), 1), 1), true);
+
 -- MySQL ON UPDATE CURRENT_TIMESTAMP equivalent.
 CREATE OR REPLACE FUNCTION minijira_set_updated_at() RETURNS trigger AS $$
 BEGIN NEW.updated_at = CURRENT_TIMESTAMP; RETURN NEW; END;
