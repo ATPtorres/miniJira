@@ -19,6 +19,8 @@ function minijira_pg_sql(string $sql): string {
     $sql = preg_replace_callback('/"((?:[^"\\\\]|\\\\.)*)"/', static function(array $m): string {
         return "'" . str_replace("'", "''", stripcslashes($m[1])) . "'";
     }, $sql) ?? $sql;
+    // Translate MySQL backtick-quoted identifiers (notably the academic `groups` table).
+    $sql = preg_replace('/`([a-zA-Z_][a-zA-Z0-9_]*)`/', '"$1"', $sql) ?? $sql;
 
     if (preg_match('/^\\s*INSERT\\s+IGNORE\\s+INTO\\b/i', $sql)) {
         $sql = preg_replace('/^\\s*INSERT\\s+IGNORE\\s+INTO/i', 'INSERT INTO', $sql) ?? $sql;
