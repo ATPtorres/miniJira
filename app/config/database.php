@@ -14,11 +14,13 @@ function minijira_pg_sql(string $sql): string {
     $sql = preg_replace('/DATE_ADD\\s*\\(\\s*CURRENT_TIMESTAMP\\s*,\\s*INTERVAL\\s+\\?\\s+MINUTE\\s*\\)/i', "(CURRENT_TIMESTAMP + (? * INTERVAL '1 minute'))", $sql) ?? $sql;
     $sql = preg_replace('/GROUP_CONCAT\\(\\s*([^,]+)\\s+ORDER BY\\s+([^)]+?)\\s+SEPARATOR\\s+\'([^\']*)\'\\s*\\)/i', "STRING_AGG($1, '$3' ORDER BY $2)", $sql) ?? $sql;
 
+    // Protect the one quoted PostgreSQL identifier used by the academic module.
+    $sql = str_replace('"groups"', '__MINIJIRA_GROUPS_IDENTIFIER__', $sql);
     // The legacy SQL uses double-quoted string constants, not quoted identifiers.
-    // Convert only simple string literals; application identifiers are unquoted.
     $sql = preg_replace_callback('/"((?:[^"\\\\]|\\\\.)*)"/', static function(array $m): string {
         return "'" . str_replace("'", "''", stripcslashes($m[1])) . "'";
     }, $sql) ?? $sql;
+    $sql = str_replace('__MINIJIRA_GROUPS_IDENTIFIER__', '"groups"', $sql);
     // Translate MySQL backtick-quoted identifiers (notably the academic `groups` table).
     $sql = preg_replace('/`([a-zA-Z_][a-zA-Z0-9_]*)`/', '"$1"', $sql) ?? $sql;
 
@@ -40,6 +42,9 @@ final class MiniJiraPostgresPDO extends PDO {
     }
     public function exec(string $statement): int|false {
         return parent::exec(minijira_pg_sql($statement));
+    }
+    public function rawExec(string $statement): int|false {
+        return parent::exec($statement);
     }
 }
 
