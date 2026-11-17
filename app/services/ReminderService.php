@@ -15,7 +15,7 @@ final class ReminderService
             $date = ($today ?? new DateTimeImmutable('today'))->modify('+1 day')->format('Y-m-d');
             $count = 0;
             $tasks = $pdo->prepare('SELECT t.*,p.title AS project_title FROM project_tasks t JOIN projects p ON p.id=t.project_id JOIN users u ON u.id=t.assigned_student_id
-                WHERE t.due_date=? AND t.status IN ('todo','doing') AND t.deleted_at IS NULL AND p.deleted_at IS NULL AND u.is_active=1
+                WHERE t.due_date=? AND t.status IN ("todo","doing") AND t.deleted_at IS NULL AND p.deleted_at IS NULL AND u.is_active=1
                 AND EXISTS(SELECT 1 FROM project_students ps WHERE ps.project_id=p.id AND ps.student_id=t.assigned_student_id)');
             $tasks->execute([$date]);
             foreach ($tasks as $t) {
