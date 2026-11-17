@@ -158,7 +158,7 @@ final class Task
         $task = self::find($taskId);
         if (!$task) return;
         self::mutate((int) $task['project_id'], static function () use ($taskId): bool {
-            $stmt = db()->prepare('UPDATE project_tasks SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL');
+            $stmt = db()->prepare('UPDATE project_tasks SET deleted_at=CURRENT_TIMESTAMP WHERE id=? AND deleted_at IS NULL');
             $stmt->execute([$taskId]);
             return $stmt->rowCount() === 1;
         });
