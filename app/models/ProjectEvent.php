@@ -18,7 +18,7 @@ final class ProjectEvent
                 WHERE e.project_id = ? AND e.deleted_at IS NULL';
         $params = [$projectId];
         if ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month)) {
-            $sql .= ' AND e.event_date BETWEEN ? AND LAST_DAY(?)';
+            $sql .= ' AND e.event_date >= ?::date AND e.event_date < (?::date + INTERVAL '1 month')';
             $params[] = $month . '-01';
             $params[] = $month . '-01';
         }
@@ -79,7 +79,7 @@ final class ProjectEvent
     {
         $event=self::find($eventId);if(!$event)return;
         Project::managedMutation((int)$event['project_id'],static function()use($eventId):void{
-        $stmt = db()->prepare('UPDATE project_events SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL');
+        $stmt = db()->prepare('UPDATE project_events SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL');
         $stmt->execute([$eventId]);
         });
     }
