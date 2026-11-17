@@ -1,9 +1,17 @@
+databases:
+  - name: minijira-db
+    databaseName: minijira
+    user: minijira
+    plan: free
+    region: oregon
+
 services:
   - type: web
     name: minijira
     runtime: docker
     plan: free
-    branch: BetaJiraFinal
+    region: oregon
+    branch: PostgreSQL-Migration
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health.php
@@ -18,16 +26,26 @@ services:
       - key: SISTEMA_EMAIL_LOOKUP_KEY
         generateValue: true
       - key: SISTEMA_DB_HOST
-        sync: false
+        fromDatabase:
+          name: minijira-db
+          property: host
       - key: SISTEMA_DB_PORT
-        value: "3306"
+        fromDatabase:
+          name: minijira-db
+          property: port
       - key: SISTEMA_DB_DATABASE
-        sync: false
+        fromDatabase:
+          name: minijira-db
+          property: database
       - key: SISTEMA_DB_USERNAME
-        sync: false
+        fromDatabase:
+          name: minijira-db
+          property: user
       - key: SISTEMA_DB_PASSWORD
-        sync: false
-      - key: SISTEMA_DB_SSL_CA
-        sync: false
+        fromDatabase:
+          name: minijira-db
+          property: password
+      - key: SISTEMA_DB_SSLMODE
+        value: require
       - key: SISTEMA_TIMEZONE
         value: America/La_Paz
