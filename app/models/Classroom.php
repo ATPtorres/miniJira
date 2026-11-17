@@ -7,11 +7,11 @@ final class Classroom
     {
         return ["$alias.is_active=1 AND EXISTS(SELECT 1 FROM users ct JOIN roles cr ON cr.id=ct.role_id WHERE ct.id=$alias.teacher_id AND ct.is_active=1 AND cr.code='docente')
             AND ($alias.teacher_id=? OR EXISTS(SELECT 1 FROM classroom_members cm JOIN users cu ON cu.id=cm.student_id JOIN roles sr ON sr.id=cu.role_id
-            WHERE cm.classroom_id=$alias.id AND cm.student_id=? AND cm.is_active=1 AND cu.is_active=1 AND sr.code='estudiante'))",[$uid,$uid]];
+            WHERE cm.classroom_id=$alias.id AND cm.student_id=? AND cm.is_active=1 AND cu.is_active=1 AND sr.code="estudiante"))",[$uid,$uid]];
     }
     public static function find(int $id): ?array
     {
-        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name, ' ', u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE c.id=?');
+        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name," ",u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE c.id=?');
         $q->execute([$id]); return $q->fetch() ?: null;
     }
     public static function canAccess(int $id,int $uid,bool $admin=false): bool
@@ -22,14 +22,14 @@ final class Classroom
     }
     public static function students(int $id): array
     {
-        $q=db()->prepare('SELECT u.id,u.first_name,u.last_name FROM classroom_members cm JOIN users u ON u.id=cm.student_id JOIN roles r ON r.id=u.role_id WHERE cm.classroom_id=? AND cm.is_active=1 AND u.is_active=1 AND r.code='estudiante' ORDER BY u.last_name,u.first_name');
+        $q=db()->prepare('SELECT u.id,u.first_name,u.last_name FROM classroom_members cm JOIN users u ON u.id=cm.student_id JOIN roles r ON r.id=u.role_id WHERE cm.classroom_id=? AND cm.is_active=1 AND u.is_active=1 AND r.code="estudiante" ORDER BY u.last_name,u.first_name');
         $q->execute([$id]);return $q->fetchAll();
     }
     public static function studentIds(int $id): array { return array_map('intval',array_column(self::students($id),'id')); }
     public static function choices(int $uid,bool $admin=false): array
     {
         [$where,$params]=self::scope($uid);
-        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name, ' ', u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE '.($admin?'c.is_active=1':$where).' ORDER BY c.period DESC,c.career,c.subject,c.group_name LIMIT 1000');
+        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name," ",u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE '.($admin?'c.is_active=1':$where).' ORDER BY c.period DESC,c.career,c.subject,c.group_name LIMIT 1000');
         $q->execute($admin?[]:$params);return $q->fetchAll();
     }
     public static function label(array $c): string { return $c['subject'].' · '.$c['group_name'].' · '.$c['period'].' · '.$c['career']; }
@@ -44,7 +44,7 @@ final class Classroom
         $students=array_values(array_unique(array_map('intval',$students)));
         if($students){
             $marks=implode(',',array_fill(0,count($students),'?'));
-            $q=db()->prepare('SELECT COUNT(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id IN ('.$marks.') AND u.is_active=1 AND r.code='estudiante'');$q->execute($students);
+            $q=db()->prepare('SELECT COUNT(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id IN ('.$marks.') AND u.is_active=1 AND r.code="estudiante"');$q->execute($students);
             if((int)$q->fetchColumn()!==count($students))throw new InvalidArgumentException('La lista contiene una cuenta que no es un estudiante activo.');
         }
         $pdo=db();$pdo->beginTransaction();
