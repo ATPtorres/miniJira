@@ -7,7 +7,7 @@ final class Classroom
     {
         return ["$alias.is_active=1 AND EXISTS(SELECT 1 FROM users ct JOIN roles cr ON cr.id=ct.role_id WHERE ct.id=$alias.teacher_id AND ct.is_active=1 AND cr.code='docente')
             AND ($alias.teacher_id=? OR EXISTS(SELECT 1 FROM classroom_members cm JOIN users cu ON cu.id=cm.student_id JOIN roles sr ON sr.id=cu.role_id
-            WHERE cm.classroom_id=$alias.id AND cm.student_id=? AND cm.is_active=1 AND cu.is_active=1 AND sr.code="estudiante"))",[$uid,$uid]];
+            WHERE cm.classroom_id=$alias.id AND cm.student_id=? AND cm.is_active=1 AND cu.is_active=1 AND sr.code='estudiante'))",[$uid,$uid]];
     }
     public static function find(int $id): ?array
     {
