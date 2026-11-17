@@ -7,15 +7,15 @@ final class ReminderService
     public static function run(?DateTimeImmutable $today = null): int
     {
         $pdo = db();
-        $lockName = 'minijira-reminders-'.substr(hash('sha256',(string)$pdo->query('SELECT DATABASE()')->fetchColumn()),0,24);
-        $lock = $pdo->prepare('SELECT GET_LOCK(?,0)');
+        $lockName = 'minijira-reminders-'.substr(hash('sha256',(string)$pdo->query('SELECT current_database()')->fetchColumn()),0,24);
+        $lock = $pdo->prepare('SELECT pg_try_advisory_lock(hashtext(?)::bigint)');
         $lock->execute([$lockName]);
         if ((int)$lock->fetchColumn() !== 1) throw new RuntimeException('Ya hay una ejecucion de recordatorios activa');
         try {
             $date = ($today ?? new DateTimeImmutable('today'))->modify('+1 day')->format('Y-m-d');
             $count = 0;
             $tasks = $pdo->prepare('SELECT t.*,p.title AS project_title FROM project_tasks t JOIN projects p ON p.id=t.project_id JOIN users u ON u.id=t.assigned_student_id
-                WHERE t.due_date=? AND t.status IN ("todo","doing") AND t.deleted_at IS NULL AND p.deleted_at IS NULL AND u.is_active=1
+                WHERE t.due_date=? AND t.status IN ('todo','doing') AND t.deleted_at IS NULL AND p.deleted_at IS NULL AND u.is_active=1
                 AND EXISTS(SELECT 1 FROM project_students ps WHERE ps.project_id=p.id AND ps.student_id=t.assigned_student_id)');
             $tasks->execute([$date]);
             foreach ($tasks as $t) {
@@ -40,7 +40,7 @@ final class ReminderService
             }
             return $count;
         } finally {
-            $stmt=$pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $stmt=$pdo->prepare('SELECT pg_advisory_unlock(hashtext(?)::bigint)');
             $stmt->execute([$lockName]);
         }
     }
