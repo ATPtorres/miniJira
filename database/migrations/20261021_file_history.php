@@ -1,33 +1,28 @@
 <?php
-/** Migración aditiva y repetible para ULAT-21; nunca reinicia datos o permisos. */
+/** PostgreSQL-compatible, additive file-version migration. */
 declare(strict_types=1);
-if (PHP_SAPI !== 'cli') {
-    http_response_code(404);
-    exit;
-}
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__, 2) . '/app/bootstrap.php';
+$pdo = db();
 $columns = [
-    'version_root_id' => 'INT UNSIGNED NULL',
-    'version_number' => 'INT UNSIGNED NOT NULL DEFAULT 1',
-    'deleted_by_id' => 'INT UNSIGNED NULL',
+    'version_root_id' => 'INTEGER NULL',
+    'version_number' => 'INTEGER NOT NULL DEFAULT 1',
+    'deleted_by_id' => 'INTEGER NULL',
 ];
 foreach ($columns as $name => $definition) {
-    $stmt = db()->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME="project_files" AND COLUMN_NAME=?');
-    $stmt->execute([$name]);
-    if (!(int) $stmt->fetchColumn()) db()->exec('ALTER TABLE project_files ADD COLUMN ' . $name . ' ' . $definition);
+    $q = $pdo->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='project_files' AND column_name=?");
+    $q->execute([$name]);
+    if (!(int)$q->fetchColumn()) $pdo->exec("ALTER TABLE project_files ADD COLUMN {$name} {$definition}");
 }
-$stmt = db()->query('SELECT COUNT(*) FROM information_schema.STATISTICS
-    WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME="project_files" AND INDEX_NAME="uq_pf_version"');
-if (!(int) $stmt->fetchColumn()) {
-    db()->exec('ALTER TABLE project_files ADD UNIQUE KEY uq_pf_version (version_root_id, version_number)');
-}
+$q = $pdo->prepare("SELECT COUNT(*) FROM pg_indexes WHERE schemaname=current_schema() AND tablename='project_files' AND indexname='uq_pf_version'");
+$q->execute();
+if (!(int)$q->fetchColumn()) $pdo->exec('CREATE UNIQUE INDEX uq_pf_version ON project_files(version_root_id, version_number)');
 foreach ([
     'fk_pf_version_root' => 'FOREIGN KEY (version_root_id) REFERENCES project_files (id) ON DELETE CASCADE',
     'fk_pf_deleted_by' => 'FOREIGN KEY (deleted_by_id) REFERENCES users (id) ON DELETE SET NULL',
 ] as $name => $definition) {
-    $stmt = db()->prepare('SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-        WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME="project_files" AND CONSTRAINT_NAME=?');
-    $stmt->execute([$name]);
-    if (!(int) $stmt->fetchColumn()) db()->exec('ALTER TABLE project_files ADD CONSTRAINT ' . $name . ' ' . $definition);
+    $q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema=current_schema() AND table_name='project_files' AND constraint_name=?");
+    $q->execute([$name]);
+    if (!(int)$q->fetchColumn()) $pdo->exec("ALTER TABLE project_files ADD CONSTRAINT {$name} {$definition}");
 }
+echo "Migracion de historial de archivos aplicada.\n";
