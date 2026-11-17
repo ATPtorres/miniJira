@@ -1,6 +1,7 @@
--- MiniJira PostgreSQL schema. Generated from the BetaJiraFinal MySQL schema.
--- PostgreSQL 15+. Apply once to an EMPTY database.
--- Idempotent table/index creation; seed inserts use ON CONFLICT DO NOTHING.
+-- MiniJira PostgreSQL schema for PostgreSQL 15+.
+-- Apply to an EMPTY database. Original MySQL branch/schema remains untouched.
+-- The legacy MySQL schema is translated here; enum columns are VARCHAR to
+-- preserve existing application values without requiring custom PG enum types.
 
 -- =====================================================================
 -- Sistema Universitario
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS roles (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT uq_roles_code UNIQUE (code)
 );
+
 -- 2.2 Permisos
 CREATE TABLE IF NOT EXISTS permissions (
 
@@ -43,6 +45,7 @@ CREATE TABLE IF NOT EXISTS permissions (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT uq_permissions_code UNIQUE (code)
 );
+
 -- 2.3 Matriz de permisos por rol
 CREATE TABLE IF NOT EXISTS role_permissions (
 
@@ -55,6 +58,7 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     REFERENCES permissions (id) ON DELETE CASCADE ON UPDATE CASCADE
 
 );
+
 -- 2.4 Usuarios
 CREATE TABLE IF NOT EXISTS users (
 
@@ -78,6 +82,7 @@ CREATE TABLE IF NOT EXISTS users (
     REFERENCES roles (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.5 Tokens de recuperacion de contrasena
 -- El token original NUNCA se guarda en texto plano: solo su hash.
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -92,6 +97,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
 
 );
+
 -- 2.6 Proyectos universitarios
 -- Contexto mínimo para tareas; la universidad conserva la matrícula oficial.
 CREATE TABLE IF NOT EXISTS classrooms (
@@ -135,6 +141,7 @@ CREATE TABLE IF NOT EXISTS classroom_audit (
  CONSTRAINT fk_ca_actor FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
 
 );
+
 CREATE TABLE IF NOT EXISTS projects (
 
   classroom_id INTEGER NULL,
@@ -156,6 +163,7 @@ CREATE TABLE IF NOT EXISTS projects (
     REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.7 Asignacion de estudiantes a proyectos
 CREATE TABLE IF NOT EXISTS project_students (
 
@@ -169,6 +177,7 @@ CREATE TABLE IF NOT EXISTS project_students (
     REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.8 Tareas del tablero Kanban: TO DO, DOING, IN REVIEW y DONE
 CREATE TABLE IF NOT EXISTS project_tasks (
 
@@ -194,6 +203,7 @@ CREATE TABLE IF NOT EXISTS project_tasks (
   CONSTRAINT chk_tasks_grade_result CHECK (grade_result IS NULL OR grade_result BETWEEN 0 AND 100)
 
 );
+
 -- 2.9 Eventos del calendario del proyecto
 CREATE TABLE IF NOT EXISTS project_events (
 
@@ -214,6 +224,7 @@ CREATE TABLE IF NOT EXISTS project_events (
     REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.10 Comentarios de proyectos (visibilidad general/privada, anonimato opcional)
 -- y por tarea (task_id + parent_id: raiz del docente y respuestas).
 CREATE TABLE IF NOT EXISTS project_comments (
@@ -239,6 +250,7 @@ CREATE TABLE IF NOT EXISTS project_comments (
     REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.11 Archivos adjuntos de proyectos, tareas y comentarios
 CREATE TABLE IF NOT EXISTS project_files (
 
@@ -274,6 +286,7 @@ CREATE TABLE IF NOT EXISTS project_files (
     REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE
 
 );
+
 -- 2.12 Notificaciones
 CREATE TABLE IF NOT EXISTS notifications (
 
@@ -291,6 +304,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   CONSTRAINT fk_notif_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 
 );
+
 -- ---------------------------------------------------------------------
 -- 3. Roles del sistema
 -- ---------------------------------------------------------------------
@@ -298,6 +312,7 @@ INSERT INTO roles (id, name, code, description) VALUES
 (1, 'Administrador', 'admin', 'Acceso total: gestiona usuarios, roles y rutas administrativas.'),
 (2, 'Docente', 'docente', 'Gestiona proyectos universitarios, asigna estudiantes y define tareas.'),
 (3, 'Estudiante', 'estudiante', 'Consulta proyectos asignados y gestiona sus tareas pendientes.') ON CONFLICT DO NOTHING;
+
 -- ---------------------------------------------------------------------
 -- 4. Permisos del sistema (sin IDs explicitos para evitar colisiones)
 -- ---------------------------------------------------------------------
@@ -319,6 +334,7 @@ INSERT INTO permissions (name, code, description) VALUES
 ('Gestionar todos los proyectos', 'projects.manage.all', 'Acceso administrativo a todos los proyectos.'),
 ('Subir archivos a proyectos', 'files.upload', 'Subir archivos adjuntos a proyectos y tareas.'),
 ('Eliminar archivos de proyectos', 'files.delete', 'Eliminar archivos adjuntos de sus proyectos.') ON CONFLICT DO NOTHING;
+
 -- ---------------------------------------------------------------------
 -- 5. Matriz de permisos por rol
 --
@@ -331,9 +347,11 @@ INSERT INTO permissions (name, code, description) VALUES
 
 -- Limpiar matriz existente para garantizar consistencia
 TRUNCATE TABLE role_permissions;
+
 -- Admin: todos los permisos
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions ON CONFLICT DO NOTHING;
+
 -- Docente: permisos de gestion de proyectos
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 2, id FROM permissions
@@ -349,9 +367,11 @@ WHERE code IN (
   'files.upload',
   'files.delete'
 ) ON CONFLICT DO NOTHING;
+
 -- Admin: permisos de archivos
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 1, id FROM permissions WHERE code IN ('files.upload', 'files.delete') ON CONFLICT DO NOTHING;
+
 -- Estudiante: permisos de consulta y actualizacion de tareas
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 3, id FROM permissions
@@ -363,6 +383,7 @@ WHERE code IN (
   'projects.view.assigned',
   'tasks.update.assigned'
 ) ON CONFLICT DO NOTHING;
+
 -- ---------------------------------------------------------------------
 -- 6. Verificacion final
 -- ---------------------------------------------------------------------
@@ -372,7 +393,9 @@ FROM roles r
 JOIN role_permissions rp ON rp.role_id = r.id
 JOIN permissions p ON p.id = rp.permission_id
 GROUP BY r.id, r.code
-ORDER BY r.id ON CONFLICT DO NOTHING;
+ORDER BY r.id;
+
+
 -- Migracion Beta: historial observado y entregas idempotentes.
 -- No reconstruye ni inventa el progreso anterior a su instalacion.
 CREATE TABLE IF NOT EXISTS project_progress_history (
@@ -385,6 +408,7 @@ CREATE TABLE IF NOT EXISTS project_progress_history (
   CONSTRAINT fk_progress_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 
 );
+
 CREATE TABLE IF NOT EXISTS notification_deliveries (
 
   dedupe_key VARCHAR(190) PRIMARY KEY,
@@ -395,52 +419,7 @@ CREATE TABLE IF NOT EXISTS notification_deliveries (
 );
 
 
--- Classroom extension
--- Contexto mínimo para tareas; la universidad conserva la matrícula oficial.
-CREATE TABLE IF NOT EXISTS classrooms (
-
- id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
- external_code VARCHAR(100) NOT NULL,
- subject VARCHAR(150) NOT NULL,
- career VARCHAR(150) NOT NULL,
- semester_number SMALLINT NOT NULL,
- group_name VARCHAR(80) NOT NULL,
- period VARCHAR(80) NOT NULL,
- teacher_id INTEGER NOT NULL,
- is_active SMALLINT NOT NULL DEFAULT 1,
- created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
- updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT uq_class_external UNIQUE (external_code),
- CONSTRAINT fk_class_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE RESTRICT
-
-);
-CREATE TABLE IF NOT EXISTS classroom_members (
-
- classroom_id INTEGER NOT NULL,
- student_id INTEGER NOT NULL,
- is_active SMALLINT NOT NULL DEFAULT 1,
- created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
- updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
- PRIMARY KEY(classroom_id,student_id),
- CONSTRAINT fk_cm_class FOREIGN KEY(classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
- CONSTRAINT fk_cm_student FOREIGN KEY(student_id) REFERENCES users(id) ON DELETE CASCADE
-
-);
-CREATE TABLE IF NOT EXISTS classroom_audit (
-
- id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
- classroom_id INTEGER NOT NULL,
- actor_id INTEGER NULL,
- action VARCHAR(30) NOT NULL,
- details TEXT NOT NULL,
- created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
- CONSTRAINT fk_ca_class FOREIGN KEY(classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
- CONSTRAINT fk_ca_actor FOREIGN KEY(actor_id) REFERENCES users(id) ON DELETE SET NULL
-
-);
-
-
--- Beta history and notification idempotency
+-- Beta history tables
 -- Migracion Beta: historial observado y entregas idempotentes.
 -- No reconstruye ni inventa el progreso anterior a su instalacion.
 CREATE TABLE IF NOT EXISTS project_progress_history (
@@ -453,6 +432,7 @@ CREATE TABLE IF NOT EXISTS project_progress_history (
   CONSTRAINT fk_progress_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 
 );
+
 CREATE TABLE IF NOT EXISTS notification_deliveries (
 
   dedupe_key VARCHAR(190) PRIMARY KEY,
@@ -463,7 +443,7 @@ CREATE TABLE IF NOT EXISTS notification_deliveries (
 );
 
 
--- Secondary indexes extracted from MySQL KEY declarations
+-- Secondary indexes
 CREATE INDEX IF NOT EXISTS idx_users_role ON users (role_id);
 CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens (token_hash);
@@ -491,16 +471,13 @@ CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications (user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notif_type ON notifications (type);
 CREATE INDEX IF NOT EXISTS idx_progress_project_time ON project_progress_history (project_id, recorded_at, id);
-CREATE INDEX IF NOT EXISTS idx_class_teacher_active ON classrooms (teacher_id,is_active,period);
-CREATE INDEX IF NOT EXISTS idx_class_context ON classrooms (period,career,semester_number);
-CREATE INDEX IF NOT EXISTS idx_class_member_access ON classroom_members (student_id,is_active,classroom_id);
-CREATE INDEX IF NOT EXISTS idx_class_audit ON classroom_audit (classroom_id,id);
 CREATE INDEX IF NOT EXISTS idx_progress_project_time ON project_progress_history (project_id, recorded_at, id);
 
--- updated_at maintenance trigger (MySQL ON UPDATE equivalent)
+-- MySQL ON UPDATE CURRENT_TIMESTAMP equivalent.
 CREATE OR REPLACE FUNCTION minijira_set_updated_at() RETURNS trigger AS $$
 BEGIN NEW.updated_at = CURRENT_TIMESTAMP; RETURN NEW; END;
 $$ LANGUAGE plpgsql;
+
 DO $$ DECLARE t text; BEGIN
   FOREACH t IN ARRAY ARRAY['users','classrooms','projects','project_tasks','project_events','project_comments','project_files','classroom_members'] LOOP
     IF to_regclass(t) IS NOT NULL THEN
