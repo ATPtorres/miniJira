@@ -1,0 +1,58 @@
+name: PostgreSQL compatibility
+
+on:
+  push:
+    branches: [PostgreSQL-Migration]
+  pull_request:
+    branches: [PostgreSQL-Migration]
+
+jobs:
+  php-and-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: minijira_test
+          POSTGRES_USER: minijira
+          POSTGRES_PASSWORD: minijira_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U minijira -d minijira_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SISTEMA_DB_HOST: 127.0.0.1
+      SISTEMA_DB_PORT: 5432
+      SISTEMA_DB_DATABASE: minijira_test
+      SISTEMA_DB_USERNAME: minijira
+      SISTEMA_DB_PASSWORD: minijira_test_password
+      SISTEMA_DB_SSLMODE: disable
+      SISTEMA_TIMEZONE: America/La_Paz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: dom, mbstring, openssl, pdo, pdo_pgsql
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+      - name: Validate Composer configuration
+        run: composer validate --no-check-publish
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      - name: Lint PHP files
+        run: find app public database -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Install PostgreSQL schema
+        run: php database/postgresql/migrate.php
+      - name: Apply Beta migrations
+        run: php database/migrate_beta.php
+      - name: Smoke-test PostgreSQL schema and compatibility SQL
+        run: |
+          php -r 'require "app/bootstrap.php"; $pdo=db(); foreach (["users","projects","project_tasks","classrooms","academic_periods","careers","subjects","groups","enrollments","course_enrollments","project_progress_history","notification_deliveries"] as $t) { $q=$pdo->prepare("SELECT to_regclass(?)"); $q->execute([$t]); if (!$q->fetchColumn()) { fwrite(STDERR, "Missing table: $t\n"); exit(1); } } $q=$pdo->prepare("SELECT CONCAT(?, \" \", ?) AS full_name"); $q->execute(["Mini","Jira"]); if ($q->fetchColumn() !== "Mini Jira") exit(2); echo "PostgreSQL smoke test OK\n";'
