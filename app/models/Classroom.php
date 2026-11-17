@@ -11,7 +11,7 @@ final class Classroom
     }
     public static function find(int $id): ?array
     {
-        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name," ",u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE c.id=?');
+        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name, ' ', u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE c.id=?');
         $q->execute([$id]); return $q->fetch() ?: null;
     }
     public static function canAccess(int $id,int $uid,bool $admin=false): bool
@@ -22,14 +22,14 @@ final class Classroom
     }
     public static function students(int $id): array
     {
-        $q=db()->prepare('SELECT u.id,u.first_name,u.last_name FROM classroom_members cm JOIN users u ON u.id=cm.student_id JOIN roles r ON r.id=u.role_id WHERE cm.classroom_id=? AND cm.is_active=1 AND u.is_active=1 AND r.code="estudiante" ORDER BY u.last_name,u.first_name');
+        $q=db()->prepare('SELECT u.id,u.first_name,u.last_name FROM classroom_members cm JOIN users u ON u.id=cm.student_id JOIN roles r ON r.id=u.role_id WHERE cm.classroom_id=? AND cm.is_active=1 AND u.is_active=1 AND r.code='estudiante' ORDER BY u.last_name,u.first_name');
         $q->execute([$id]);return $q->fetchAll();
     }
     public static function studentIds(int $id): array { return array_map('intval',array_column(self::students($id),'id')); }
     public static function choices(int $uid,bool $admin=false): array
     {
         [$where,$params]=self::scope($uid);
-        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name," ",u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE '.($admin?'c.is_active=1':$where).' ORDER BY c.period DESC,c.career,c.subject,c.group_name LIMIT 1000');
+        $q=db()->prepare('SELECT c.*,CONCAT(u.first_name, ' ', u.last_name) AS teacher_name FROM classrooms c JOIN users u ON u.id=c.teacher_id WHERE '.($admin?'c.is_active=1':$where).' ORDER BY c.period DESC,c.career,c.subject,c.group_name LIMIT 1000');
         $q->execute($admin?[]:$params);return $q->fetchAll();
     }
     public static function label(array $c): string { return $c['subject'].' · '.$c['group_name'].' · '.$c['period'].' · '.$c['career']; }
@@ -44,7 +44,7 @@ final class Classroom
         $students=array_values(array_unique(array_map('intval',$students)));
         if($students){
             $marks=implode(',',array_fill(0,count($students),'?'));
-            $q=db()->prepare('SELECT COUNT(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id IN ('.$marks.') AND u.is_active=1 AND r.code="estudiante"');$q->execute($students);
+            $q=db()->prepare('SELECT COUNT(*) FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id IN ('.$marks.') AND u.is_active=1 AND r.code='estudiante'');$q->execute($students);
             if((int)$q->fetchColumn()!==count($students))throw new InvalidArgumentException('La lista contiene una cuenta que no es un estudiante activo.');
         }
         $pdo=db();$pdo->beginTransaction();
@@ -65,13 +65,12 @@ final class Classroom
             foreach(array_chunk($students,400) as $chunk){
                 $sql=implode(',',array_fill(0,count($chunk),'(?,?,1)'));$args=[];
                 foreach($chunk as $student){$args[]=$id;$args[]=$student;}
-                $q=$pdo->prepare('INSERT INTO classroom_members(classroom_id,student_id,is_active) VALUES'.$sql.' ON DUPLICATE KEY UPDATE is_active=1');$q->execute($args);
+                $q=$pdo->prepare('INSERT INTO classroom_members(classroom_id,student_id,is_active) VALUES'.$sql.' ON CONFLICT (classroom_id,student_id) DO UPDATE SET is_active=1');$q->execute($args);
             }
             // El responsable operativo sigue al docente de la clase, nunca al administrador que edita.
             $pdo->prepare('UPDATE projects SET responsible_teacher_id=? WHERE classroom_id=?')->execute([$teacher,$id]);
             // No reactivar automáticamente equipos de quienes vuelvan a una lista.
-            $pdo->prepare('DELETE ps FROM project_students ps JOIN projects p ON p.id=ps.project_id
-                WHERE p.classroom_id=? AND NOT EXISTS(SELECT 1 FROM classroom_members cm WHERE cm.classroom_id=p.classroom_id AND cm.student_id=ps.student_id AND cm.is_active=1)')->execute([$id]);
+            $pdo->prepare('DELETE FROM project_students ps USING projects p WHERE p.id=ps.project_id AND p.classroom_id=? AND NOT EXISTS(SELECT 1 FROM classroom_members cm WHERE cm.classroom_id=p.classroom_id AND cm.student_id=ps.student_id AND cm.is_active=1)')->execute([$id]);
             $q=$pdo->prepare('INSERT INTO classroom_audit(classroom_id,actor_id,action,details) VALUES(?,?,?,?)');
             $q->execute([$id,$actor,$old===null?'created':'updated',json_encode(['before'=>['teacher_id'=>$old['teacher_id']??null,'is_active'=>$old['is_active']??null,'student_ids'=>$before], 'after'=>['teacher_id'=>$teacher,'is_active'=>(int)!empty($data['is_active']),'student_ids'=>$students]],JSON_THROW_ON_ERROR)]);
             $pdo->commit();return $id;
