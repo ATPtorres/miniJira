@@ -18,7 +18,7 @@ final class ProjectEvent
                 WHERE e.project_id = ? AND e.deleted_at IS NULL';
         $params = [$projectId];
         if ($month !== null && preg_match('/^\d{4}-\d{2}$/', $month)) {
-            $sql .= ' AND e.event_date >= ?::date AND e.event_date < (?::date + INTERVAL '1 month')';
+            $sql .= ' AND e.event_date >= ?::date AND e.event_date < (?::date + INTERVAL $$1 month$$)';
             $params[] = $month . '-01';
             $params[] = $month . '-01';
         }
