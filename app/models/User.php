@@ -66,7 +66,7 @@ final class User
         $email = normalize_email((string) $data['email']);
         $stmt = db()->prepare(
             'INSERT INTO users (role_id, first_name, last_name, email, email_encrypted, email_lookup_hash, password_hash, email_verified_at)
-             VALUES (?, ?, ?, NULL, ?, ?, ?, NOW())'
+             VALUES (?, ?, ?, NULL, ?, ?, ?, CURRENT_TIMESTAMP)'
         );
         $stmt->execute([
             $roleId,
@@ -82,7 +82,7 @@ final class User
 
     public static function updateLastLogin(int $id): void
     {
-        $stmt = db()->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?');
+        $stmt = db()->prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?');
         $stmt->execute([$id]);
     }
 
