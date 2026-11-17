@@ -101,7 +101,7 @@ final class Project
     public static function softDelete(int $projectId): void
     {
         self::managedMutation($projectId,static function()use($projectId):void{
-            $q=db()->prepare('UPDATE projects SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL');$q->execute([$projectId]);
+            $q=db()->prepare('UPDATE projects SET deleted_at=CURRENT_TIMESTAMP WHERE id=? AND deleted_at IS NULL');$q->execute([$projectId]);
         },'projects.edit.own');
     }
 
