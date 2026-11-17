@@ -44,7 +44,7 @@ final class PasswordResetToken
             // La expiracion se calcula con el reloj del servidor MySQL.
             $pdo->prepare(
                 'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-                 VALUES (?, ?, (CURRENT_TIMESTAMP + (? * INTERVAL '1 minute')))'
+                 VALUES (?, ?, (CURRENT_TIMESTAMP + (? * INTERVAL $$1 minute$$)))'
             )->execute([$userId, $tokenHash, $ttlMinutes]);
 
             $pdo->commit();
