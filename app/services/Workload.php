@@ -49,7 +49,7 @@ final class Workload
         $from=' FROM project_tasks t JOIN projects p ON p.id=t.project_id JOIN classrooms c ON c.id=p.classroom_id LEFT JOIN users u ON u.id=t.assigned_student_id WHERE '.$where;
         $q=db()->prepare('SELECT COUNT(*) AS total,COUNT(*) FILTER (WHERE t.status IN ($$todo$$,$$doing$$)) AS pending,COUNT(*) FILTER (WHERE t.status=$$review$$) AS review,COUNT(*) FILTER (WHERE t.grade_result IS NOT NULL) AS graded'.$from);
         $q->execute($params);$counts=array_map('intval',$q->fetch());$pages=max(1,(int)ceil($counts['total']/25));$page=max(1,min($page,$pages));
-        $q=db()->prepare('SELECT t.*,p.title AS project_title,c.subject,c.career,c.semester_number,c.group_name,c.period,CONCAT(u.first_name, ' ', u.last_name) AS student_name'.$from.' ORDER BY t.due_date IS NULL,t.due_date,t.id LIMIT 25 OFFSET '.(($page-1)*25));
+        $q=db()->prepare('SELECT t.*,p.title AS project_title,c.subject,c.career,c.semester_number,c.group_name,c.period,CONCAT(u.first_name," ",u.last_name) AS student_name'.$from.' ORDER BY t.due_date IS NULL,t.due_date,t.id LIMIT 25 OFFSET '.(($page-1)*25));
         $q->execute($params);return ['items'=>$q->fetchAll(),'counts'=>$counts,'page'=>$page,'pages'=>$pages];
     }
 }
