@@ -21,8 +21,7 @@ final class CourseEnrollment
         // Prerrequisitos: verificar que requiere aprobadas
         $prereqs = Subject::prerequisites((int)$ta['subject_id']);
         if ($prereqs !== []) {
-            $approvedCodes = array_map(fn($r)=> (int)$r['subject_id'], db()->prepare('SELECT ta2.subject_id FROM course_enrollments ce2 JOIN teaching_assignments ta2 ON ta2.id=ce2.teaching_assignment_id JOIN enrollments e2 ON e2.id=ce2.enrollment_id WHERE e2.student_id=? AND ce2.status="aprobada"')->execute([(int)$en['student_id']]) ? [] : []);
-            // re-query correctly
+            // Consultar las materias aprobadas del estudiante antes de validar prerrequisitos.
             $stmt = db()->prepare('SELECT ta2.subject_id FROM course_enrollments ce2 JOIN teaching_assignments ta2 ON ta2.id=ce2.teaching_assignment_id JOIN enrollments e2 ON e2.id=ce2.enrollment_id WHERE e2.student_id=? AND ce2.status="aprobada"');
             $stmt->execute([(int)$en['student_id']]);
             $approved = array_map(fn($r)=>(int)$r['subject_id'], $stmt->fetchAll());
