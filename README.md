@@ -1,8 +1,8 @@
 # MiniJira — tareas y entregas
 
-> **Despliegue:** el proyecto incluye Dockerfile y Blueprint para Render Free. Consulta [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) antes de publicar: se requiere una base MySQL externa y almacenamiento persistente externo para archivos.
+> **Despliegue PostgreSQL:** esta rama incluye Dockerfile, esquema PostgreSQL y Blueprint para Render Free. Consulta [docs/DEPLOY_RENDER_POSTGRESQL.md](docs/DEPLOY_RENDER_POSTGRESQL.md). La rama original `BetaJiraFinal` conserva MySQL sin cambios.
 
-Plataforma de tareas universitarias estilo JIRA, construida en **PHP 8.x + MySQL/MariaDB (XAMPP)** sin frameworks.
+Plataforma de tareas universitarias estilo JIRA, construida en **PHP 8.3 + PostgreSQL** para esta rama de despliegue.
 
 La rama `pruebacritica` incorpora clases y participantes autorizados, aislamiento académico y un panel de carga de trabajo. La universidad conserva su plataforma de inscripciones y gestión oficial de docentes. Ver [alcance, migración y uso de pruebacritica](docs/PRUEBACRITICA.md).
 
@@ -17,8 +17,8 @@ Para Beta, ejecutar `composer install` y `php database/migrate_beta.php` antes d
 
 ## 1. Requisitos
 
-- [XAMPP](https://www.apachefriends.org/) con PHP 8.x, Apache, MySQL/MariaDB y phpMyAdmin.
-- Extensiones PHP habilitadas: `pdo_mysql`, `openssl`, `session`, `mbstring`, `fileinfo` y `dom`.
+- PHP 8.3, Apache y PostgreSQL 15+.
+- Extensiones PHP habilitadas: `pdo_pgsql`, `openssl`, `session`, `mbstring`, `fileinfo` y `dom`.
 - Composer 2 para instalar el generador de reportes PDF de Beta.
 
 ## 2. Instalación rápida
@@ -139,7 +139,7 @@ sistema-universitario/
 |---|---|
 | Apache no arranca | Cambia puerto en `httpd.conf` o detén el servicio que lo bloquea |
 | "Access denied for 'root'" | Edita `app/config/config.php` con tu contraseña MySQL |
-| "Unknown database" | Ejecuta `database/install.sql` |
+| "Unknown database" | Ejecuta `database/postgresql/install.sql` |
 | Página en blanco | Revisa `storage/logs/app.log` |
 | Permisos denegados (403) | Verifica que ejecutaste `install.sql` completo |
 
